@@ -1,18 +1,12 @@
-# ozkandemir.net
+# ozkandemir.net V2
+V2: 6 özel yazılım tanıtımı, TCMB canlı gösterge kurları, TradingView piyasa görünümü ve GİB/SGK/Resmî Gazete canlı içerik akışı.
 
-Özkan Demir - Serbest Muhasebeci Mali Müşavir kişisel web sitesi.
+Cloudflare Workers Static Assets + Worker API kullanır.
+Deploy: `npx wrangler deploy`
 
-## Yayın
-Bu proje statik HTML/CSS/JS yapısındadır ve GitHub üzerinden Cloudflare Pages/Workers ile otomatik yayınlanacak şekilde hazırlanmıştır.
+Dizinler:
+- public/: web sitesi
+- src/index.js: canlı veri API katmanı
+- wrangler.jsonc: Cloudflare yapılandırması
 
-## Dosyalar
-- `index.html` ana sayfa
-- `styles.css` tasarım
-- `script.js` mobil menü ve küçük etkileşimler
-- `favicon.svg` site ikonu
-
-## İletişim
-- Telefon / WhatsApp: 0551 600 77 87
-- E-posta: ozkan6181@hotmail.com
-- Konum: Ankara
-- Instagram: @ozkan6181
+Piyasa verileri sağlayıcı ve borsaya göre gecikmeli olabilir.
