@@ -1,11 +1,16 @@
-# ozkandemir.net V3.3
+# ozkandemir.net V3.4
 
-Düzeltmeler:
-- Onaylanan referans görseldeki takım elbiseli portre kullanıldı.
-- Ham tişörtlü fotoğraf hiçbir görünür alanda kullanılmıyor.
-- Ana sayfa yatay taşma ve ekran sığma sorunları düzeltildi.
-- TradingView piyasa paneli desteklenen `tv-tickers` bileşenine geçirildi.
-- Üst piyasa şeridi kompakt ve responsive hale getirildi.
-- TCMB kurları Worker API üzerinden çalışmaya devam eder.
-- Hesaplama araçları için tıklama fallback'i eklendi.
-- Hizmetler ve iletişim bölümleri aktif bağlantılardır.
+V3.4 ile site gerçek çok sayfalı mimariye ayrıldı.
+
+Sayfalar:
+- index.html — Ana sayfa dashboard
+- hizmetler.html
+- muhasebe-merkezi.html
+- yazilimlar.html
+- canli-veriler.html
+- mevzuat.html
+- hesaplama-araclari.html
+- hakkimda.html
+- iletisim.html
+
+Üst menü tüm sayfalarda sticky/sabit kalır. TCMB ve mevzuat API'leri Cloudflare Worker üzerinden çalışır.
