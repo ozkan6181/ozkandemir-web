@@ -1,3 +1,7 @@
+# V3 Düzeltme Sürümü
+
+Onaylanan takım elbiseli portre tasarımına göre görsel varlıklar düzeltilmiştir.
+
 # Özkan Demir SMMM V3
 Onaylanan dashboard tasarımına göre hazırlanmış Cloudflare Workers + statik web paketi.
 
