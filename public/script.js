@@ -22,3 +22,11 @@ function kdvForm(){title.textContent='KDV Hesaplama';body.innerHTML=`<label>Tuta
 function incomeForm(){title.textContent='Gelir Vergisi Hesaplama';body.innerHTML=`<label>Vergiye tabi matrah (TL)</label><input id="base" type="number" min="0" value="250000"><label>Gelir türü</label><select id="wage"><option value="1">Ücret geliri</option><option value="0">Diğer gelirler</option></select><button class="calc" id="doIncome">Hesapla</button><div id="res"></div><div class="calc-note">2026 Gelir Vergisi Kanunu 103. madde tarifesi kullanılır.</div>`;$('#doIncome').onclick=()=>{let b=+$('#base').value,w=$('#wage').value==='1',tax=tax2026(b,w),avg=b?tax/b*100:0;$('#res').innerHTML=`<table class="result-table"><tr><td>Matrah</td><td>${money(b)}</td></tr><tr><td>Hesaplanan gelir vergisi</td><td>${money(tax)}</td></tr><tr><td>Ortalama vergi oranı</td><td>%${fmt(avg,2)}</td></tr></table>`}}
 function fxForm(){title.textContent='Döviz / TL Çevirici';let opts=(rateData?.rates||[]).map(x=>`<option value="${x.code}">${x.code} - ${x.name}</option>`).join('');body.innerHTML=`<label>Döviz tutarı</label><input id="amt" type="number" min="0" value="1000"><label>Para birimi</label><select id="cur">${opts||'<option>USD</option>'}</select><label>Kur tipi</label><select id="kind"><option value="sell">TCMB satış</option><option value="buy">TCMB alış</option></select><button class="calc" id="doFx">Hesapla</button><div id="res"></div>`;$('#doFx').onclick=()=>{let a=+$('#amt').value,c=$('#cur').value,x=rateData?.rates.find(z=>z.code===c),raw=$('#kind').value==='buy'?x?.buy:x?.sell,v=parseFloat(String(raw||'0').replace(',','.'));$('#res').innerHTML=x?`<table class="result-table"><tr><td>${fmt(a,2)} ${c}</td><td>${money(a*v)}</td></tr><tr><td>Kullanılan kur</td><td>${fmt(v,4)}</td></tr></table>`:'<div class="warning">TCMB kuru henüz yüklenmedi. Birkaç saniye sonra tekrar deneyin.</div>'}}
 loadRates();loadNews();setInterval(loadRates,1800000);setInterval(loadNews,1200000);
+// V3.3: calculator click fallback for dynamically rendered/responsive layouts.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-tool]');
+  if (btn && btn.dataset.tool && typeof openTool === 'function') {
+    e.preventDefault();
+    openTool(btn.dataset.tool);
+  }
+});
