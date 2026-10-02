@@ -24,3 +24,8 @@ V3.4 çalışan ana referans sürüm korunarak hazırlanmıştır.
 `node --check src/index.js`
 
 Son kontrol: 02.10.2026
+
+## V3.5.1 Türkçe karakter düzeltmesi
+- Güncel Mevzuat & Haberler API yanıtlarında kaynak sayfanın charset bilgisi okunur.
+- ISO-8859-9 / Windows-1254 Türkçe kaynaklar doğru çözümlenir.
+- HTML entity biçimindeki Türkçe karakterler Unicode'a çevrilir.
