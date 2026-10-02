@@ -1,2 +1,8 @@
-# ozkandemir.net V3
-Özkan Demir SMMM kişisel web sitesi. Cloudflare Workers + static assets.
+# Özkan Demir SMMM V3
+Onaylanan dashboard tasarımına göre hazırlanmış Cloudflare Workers + statik web paketi.
+
+## Kurulum
+Mevcut GitHub deposunda dosyaları aynı yollarla değiştirin/yükleyin. Cloudflare build komutu: `npx wrangler deploy`.
+
+## Not
+Maaş, kıdem, ihbar ve gelir vergisi hesaplayıcıları mevzuata bağlı parametre sistemi kurulana kadar yanlış oran göstermemek için bilgilendirme modundadır. KDV ve TCMB döviz çevirici aktiftir.
