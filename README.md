@@ -1,12 +1,14 @@
-# V3 Düzeltme Sürümü
+# ozkandemir.net V3.2
 
-Onaylanan takım elbiseli portre tasarımına göre görsel varlıklar düzeltilmiştir.
+Düzeltmeler:
+- Hizmetler bölümü aktif ve menüden erişilebilir.
+- İletişim bölümü aktif; telefon, e-posta, WhatsApp ve Instagram bağlantıları çalışır.
+- TCMB kurları canlı Worker API üzerinden yüklenir.
+- TradingView piyasa veri bileşeni eklendi.
+- GİB/SGK/Resmî Gazete akışına resmî bağlantı fallback'i eklendi.
+- 8 hesaplama aracının tamamı çalışır hale getirildi.
+- Fotoğrafta yapay zekâ üretimi kullanılmadı; kullanıcının orijinal fotoğrafı doğrudan kullanılır.
 
-# Özkan Demir SMMM V3
-Onaylanan dashboard tasarımına göre hazırlanmış Cloudflare Workers + statik web paketi.
+2026 parametreleri (bilgilendirme amaçlı): brüt asgari ücret 33.030 TL, SGK tavanı 297.270 TL, kıdem tavanı 73.729,87 TL, ücret gelir vergisi tarifesi 190.000 / 400.000 / 1.500.000 / 5.300.000 eşikleri.
 
-## Kurulum
-Mevcut GitHub deposunda dosyaları aynı yollarla değiştirin/yükleyin. Cloudflare build komutu: `npx wrangler deploy`.
-
-## Not
-Maaş, kıdem, ihbar ve gelir vergisi hesaplayıcıları mevzuata bağlı parametre sistemi kurulana kadar yanlış oran göstermemek için bilgilendirme modundadır. KDV ve TCMB döviz çevirici aktiftir.
+Cloudflare deploy: `npx wrangler deploy`

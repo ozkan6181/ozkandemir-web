@@ -1,1 +1,12 @@
-{"name":"ozkandemir-web","version":"3.0.0","private":true,"scripts":{"deploy":"wrangler deploy","dev":"wrangler dev"},"devDependencies":{"wrangler":"^4.0.0"}}
+{
+  "name": "ozkandemir-web",
+  "version": "3.2.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
