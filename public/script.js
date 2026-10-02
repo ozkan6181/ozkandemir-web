@@ -2,6 +2,26 @@ const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];let
 const fmt=(n,d=2)=>Number(n||0).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});const money=n=>fmt(n,2)+' TL';
 function safeText(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 async function loadRates(){const box=$('#rates'),date=$('#rateDate');if(!box)return;try{const r=await fetch('/api/tcmb',{cache:'no-store'});if(!r.ok)throw 0;const d=await r.json();if(!Array.isArray(d.rates)||!d.rates.length)throw 0;rateData=d;if(date)date.textContent=`TCMB Günlük Döviz Kurları · ${d.date||''}`;box.innerHTML=d.rates.map(x=>`<div class="rate"><b>${safeText(x.code)} <small>${safeText(x.name)}</small></b><strong>${safeText(x.buy||'-')}</strong><small>Alış: ${safeText(x.buy||'-')}<br>Satış: ${safeText(x.sell||'-')}</small></div>`).join('')}catch{box.innerHTML='<div class="loading">TCMB verisi şu anda alınamadı. <a href="https://www.tcmb.gov.tr/kurlar/today.xml" target="_blank" rel="noopener">TCMB kaynağını aç</a></div>'}}
+
+async function loadBist(){
+  const card=$('#bistCard'); if(!card)return;
+  const value=$('#bistValue'),change=$('#bistChange'),high=$('#bistHigh'),low=$('#bistLow'),time=$('#bistTime'),spark=$('#bistSpark');
+  try{
+    const r=await fetch('/api/bist',{cache:'no-store'}); if(!r.ok)throw 0;
+    const d=await r.json(); if(!Number.isFinite(Number(d.price)))throw 0;
+    const price=Number(d.price), ch=Number(d.change||0), pct=Number(d.changePercent||0);
+    value.textContent=fmt(price,2);
+    change.textContent=`${ch>=0?'+':''}${fmt(ch,2)} (${ch>=0?'+':''}${fmt(pct,2)}%)`;
+    change.className=ch>0?'up':ch<0?'down':'flat';
+    high.textContent=`Gün Yüksek: ${fmt(d.dayHigh,2)}`;
+    low.textContent=`Gün Düşük: ${fmt(d.dayLow,2)}`;
+    time.textContent=d.marketTime?`Son güncelleme: ${new Date(d.marketTime*1000).toLocaleString('tr-TR')}`:'Gecikmeli veri';
+    const pts=(d.points||[]).map(Number).filter(Number.isFinite);
+    if(spark&&pts.length>1){const min=Math.min(...pts),max=Math.max(...pts),span=max-min||1;const w=640,h=150,pad=8;const xy=pts.map((v,i)=>`${(i/(pts.length-1)*w).toFixed(1)},${(h-pad-((v-min)/span)*(h-pad*2)).toFixed(1)}`).join(' ');spark.innerHTML=`<polyline points="${xy}" fill="none" stroke="currentColor" stroke-width="3" vector-effect="non-scaling-stroke"/>`;spark.classList.toggle('down',ch<0)}
+  }catch{
+    value.textContent='Veri alınamadı'; change.textContent='BIST 100 için harici widget yerine güvenli yedek görünüm kullanılıyor.'; change.className='flat'; time.textContent='Biraz sonra tekrar deneyin.';
+  }
+}
 async function loadNews(){const box=$('#news');if(!box)return;try{const r=await fetch('/api/news',{cache:'no-store'});if(!r.ok)throw 0;const d=await r.json();box.innerHTML=(d.items||[]).slice(0,12).map(x=>`<div class="item"><a href="${safeText(x.url)}" target="_blank" rel="noopener">${safeText(x.title)}</a><small>${safeText(x.source)}${x.date?' · '+safeText(x.date):''}</small></div>`).join('')||fallbackNews()}catch{box.innerHTML=fallbackNews()}}
 function fallbackNews(){return `<div class="item"><a href="https://www.gib.gov.tr/mevzuat" target="_blank" rel="noopener">GİB Vergi Mevzuatı</a><small>Resmî kaynak</small></div><div class="item"><a href="https://www.sgk.gov.tr/duyuru" target="_blank" rel="noopener">SGK Duyuruları</a><small>Resmî kaynak</small></div><div class="item"><a href="https://www.resmigazete.gov.tr/" target="_blank" rel="noopener">Resmî Gazete</a><small>Resmî kaynak</small></div>`}
 function daysUntil(date){const now=new Date();now.setHours(0,0,0,0);const d=new Date(date+'T00:00:00');return Math.ceil((d-now)/86400000)}
@@ -30,4 +50,4 @@ function delayForm(){title.textContent='Gecikme Hesabı';body.innerHTML=field('A
 function fxForm(){title.textContent='Döviz / TL Çevirici';const rates=(rateData&&rateData.rates)||[];body.innerHTML=field('Tutar','amt',100)+select('Döviz','code',(rates.length?rates:[{code:'USD',sell:0},{code:'EUR',sell:0}]).map(x=>[x.code,x.code]))+select('Yön','dir',[['fxToTry','Döviz → TL'],['tryToFx','TL → Döviz']])+select('Kur','side',[['sell','Satış kuru'],['buy','Alış kuru']])+'<button class="calc" id="run">Hesapla</button><div id="out"></div>';$('#run').onclick=()=>{const x=rates.find(r=>r.code===$('#code').value);if(!x){$('#out').innerHTML='<div class="warning">Canlı kur verisi alınamadı.</div>';return}const rate=Number(String(x[$('#side').value]).replace(',','.')),r=C.fx(+$('#amt').value,rate,$('#dir').value);$('#out').innerHTML=`<div class="result">Sonuç: <b>${fmt(r.result,4)}</b></div>`}}
 const mt=$('.menu-toggle'),mn=$('.site-header nav');if(mt&&mn)mt.addEventListener('click',()=>{const open=mn.classList.toggle('open');mt.setAttribute('aria-expanded',open?'true':'false')});$$('.site-header nav a').forEach(a=>a.addEventListener('click',()=>mn&&mn.classList.remove('open')));
 const cw=$('#contactWhatsapp');if(cw)cw.addEventListener('click',()=>{const topic=$('#contactTopic').value,msg=$('#contactMessage').value.trim(),text=`Merhaba Özkan Bey, ${topic} hakkında bilgi almak istiyorum.${msg?' '+msg:''}`;window.open('https://wa.me/905516007787?text='+encodeURIComponent(text),'_blank','noopener')});
-renderDeadlines();loadRates();loadNews();
+renderDeadlines();loadRates();loadBist();loadNews();
