@@ -103,3 +103,6 @@ renderDeadlines();loadRates();loadBist();loadNews();
   }));
 })();
 
+
+// V3.5.8 - Yazılım detay galerisi / slider
+$$('[data-gallery]').forEach(g=>{const main=g.querySelector('[data-gallery-main]'),thumbs=[...g.querySelectorAll('.gallery-thumb')];if(!main||!thumbs.length)return;let idx=Math.max(0,thumbs.findIndex(x=>x.classList.contains('active')));const show=i=>{idx=(i+thumbs.length)%thumbs.length;thumbs.forEach((t,n)=>t.classList.toggle('active',n===idx));const t=thumbs[idx];main.src=t.dataset.src;main.alt=t.dataset.alt||'';t.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'})};thumbs.forEach((t,i)=>t.addEventListener('click',()=>show(i)));const prev=g.querySelector('[data-gallery-prev]'),next=g.querySelector('[data-gallery-next]');if(prev)prev.addEventListener('click',()=>show(idx-1));if(next)next.addEventListener('click',()=>show(idx+1));});
