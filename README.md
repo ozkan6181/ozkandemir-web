@@ -1,11 +1,13 @@
-# Özkan Demir Web V3.5.5
+# Özkan Demir Web V3.5.6
 
-V3.5.5, V3.5.4 çalışan yapısı üzerine hazırlanmıştır.
+V3.5.5 çalışan referans sürüm korunmuştur.
 
-## Bu sürümde
-- BIST 100 için TradingView embed/widget kullanımı tamamen kaldırıldı.
-- Piyasa Görünümü yalnızca sitenin kendi `bist-card` bileşeni ve `/api/bist` servisi ile çalışır.
-- Sayfalardaki gereksiz `tv-tickers.js` yüklemeleri kaldırıldı.
-- Üst genel piyasa şeridi yalnızca BIST içermeyen `tv-ticker-tape` sembollerini kullanır.
-- TCMB döviz alanındaki Hızlı Döviz Çevirici korunur.
-- V3.5.1 Türkçe karakter düzeltmesi korunur.
+## V3.5.6
+- Yazılımlar sayfasındaki 6 yazılıma **Teklif İste** alanı eklendi.
+- Her yazılım için **WhatsApp** ve **E-posta** seçenekleri bulunur.
+- Her iki kanal da seçilen yazılım adını içeren hazır teklif talebi mesajıyla açılır.
+- Yazılım detay sayfalarına da aynı teklif aksiyonları eklendi.
+- Telefon: 0551 600 77 87
+- E-posta: ozkan6181@hotmail.com
+
+Mevcut V3.5.5 özellikleri, BIST kartı, Türkçe karakter mantığı, hesaplama araçları ve diğer sayfalar korunmuştur.
