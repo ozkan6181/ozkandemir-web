@@ -51,3 +51,55 @@ function fxForm(){title.textContent='Döviz / TL Çevirici';const rates=(rateDat
 const mt=$('.menu-toggle'),mn=$('.site-header nav');if(mt&&mn)mt.addEventListener('click',()=>{const open=mn.classList.toggle('open');mt.setAttribute('aria-expanded',open?'true':'false')});$$('.site-header nav a').forEach(a=>a.addEventListener('click',()=>mn&&mn.classList.remove('open')));
 const cw=$('#contactWhatsapp');if(cw)cw.addEventListener('click',()=>{const topic=$('#contactTopic').value,msg=$('#contactMessage').value.trim(),text=`Merhaba Özkan Bey, ${topic} hakkında bilgi almak istiyorum.${msg?' '+msg:''}`;window.open('https://wa.me/905516007787?text='+encodeURIComponent(text),'_blank','noopener')});
 renderDeadlines();loadRates();loadBist();loadNews();
+
+// V3.5.7 - Teklif e-posta bağlantıları: webmail seçici
+(function(){
+  const offerMailButtons=[...document.querySelectorAll('.offer-mail')];
+  if(!offerMailButtons.length) return;
+
+  function parseMailto(href){
+    const raw=String(href||'').replace(/^mailto:/i,'');
+    const q=raw.indexOf('?');
+    const to=decodeURIComponent(q>=0?raw.slice(0,q):raw);
+    const params=new URLSearchParams(q>=0?raw.slice(q+1):'');
+    return {to,subject:params.get('subject')||'',body:params.get('body')||''};
+  }
+
+  function ensureEmailChooser(){
+    let el=document.getElementById('emailChooser');
+    if(el) return el;
+    el=document.createElement('div');
+    el.id='emailChooser';
+    el.className='email-chooser';
+    el.setAttribute('aria-hidden','true');
+    el.innerHTML=`<div class="email-chooser-box" role="dialog" aria-modal="true" aria-labelledby="emailChooserTitle">
+      <button type="button" class="email-chooser-close" aria-label="Kapat">×</button>
+      <span class="email-chooser-kicker">TEKLİF TALEBİ</span>
+      <h3 id="emailChooserTitle">E-posta uygulamasını seçin</h3>
+      <p>Hazır konu ve mesaj seçtiğiniz e-posta hizmetine aktarılacak.</p>
+      <div class="email-chooser-actions">
+        <a id="emailGmail" class="email-provider gmail" target="_blank" rel="noopener">Gmail ile aç</a>
+        <a id="emailOutlook" class="email-provider outlook" target="_blank" rel="noopener">Outlook / Hotmail ile aç</a>
+        <a id="emailDefault" class="email-provider default">Varsayılan e-posta uygulaması</a>
+      </div>
+    </div>`;
+    document.body.appendChild(el);
+    const close=()=>{el.classList.remove('show');el.setAttribute('aria-hidden','true')};
+    el.querySelector('.email-chooser-close').addEventListener('click',close);
+    el.addEventListener('click',e=>{if(e.target===el)close()});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&el.classList.contains('show'))close()});
+    return el;
+  }
+
+  offerMailButtons.forEach(a=>a.addEventListener('click',e=>{
+    e.preventDefault();
+    const m=parseMailto(a.getAttribute('href'));
+    const chooser=ensureEmailChooser();
+    chooser.querySelector('#emailGmail').href='https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(m.to)+'&su='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);
+    chooser.querySelector('#emailOutlook').href='https://outlook.live.com/mail/0/deeplink/compose?to='+encodeURIComponent(m.to)+'&subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);
+    chooser.querySelector('#emailDefault').href='mailto:'+encodeURIComponent(m.to)+'?subject='+encodeURIComponent(m.subject)+'&body='+encodeURIComponent(m.body);
+    chooser.classList.add('show');
+    chooser.setAttribute('aria-hidden','false');
+  }));
+})();
+
