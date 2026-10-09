@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#08263f">
+<title>Yönetim Paneli | Özkan Demir</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/panel/panel.css">
+</head>
+<body class="booting">
+<div class="app">
+  <aside class="side">
+    <a class="brand" href="#programlar"><span class="brand-mark">ÖD</span><span><b>ÖZKAN DEMİR</b><small class="gold">YÖNETİM PANELİ</small></span></a>
+    <nav class="side-nav" aria-label="Panel menüsü">
+      <a href="#programlar" data-nav="programlar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8l-9-5-9 5v8l9 5z"></path><path d="M3.3 7L12 12l8.7-5M12 22V12"></path></svg>Programlar</a>
+      <a href="#lisanslar" data-nav="lisanslar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M10.8 12.2L20 3M16 7l3 3M18 5l2 2"></path></svg>Lisanslar</a>
+      <a href="#yukle" data-nav="yukle"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Yeni yükleme</a>
+      <a href="#linkler" data-nav="linkler"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path></svg>İndirme bağlantıları</a>
+      <a href="#guvenlik" data-nav="guvenlik"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>Güvenlik ve kayıtlar</a>
+    </nav>
+    <div class="side-foot">
+      <span id="sessWhere">Oturum: —</span>
+      <span id="sessIdle">Otomatik çıkış: 30 dk</span>
+      <button type="button" class="linkbtn" id="logoutBtn">Güvenli çıkış →</button>
+      <a href="/">ozkandemir.net'e dön</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- PROGRAMLAR -->
+    <section class="view" id="view-programlar">
+      <header class="page-head">
+        <div>
+          <span class="kicker">PROGRAMLAR</span>
+          <h1>Hoş geldiniz, Özkan Bey</h1>
+          <p>Programlarınızı yükleyin, sürüm geçmişini tutun ve paylaşımı siz yönetin.</p>
+        </div>
+        <a class="btn btn-gold" href="#yukle"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Yeni program yükle</a>
+      </header>
+      <div id="backupWarn" class="alert alert-warn" role="status" hidden></div>
+
+      <div class="stats" id="stats"></div>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Yüklü programlar</h2>
+          <label class="search"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"></path><path d="M20 20l-3.5-3.5"></path></svg><input id="progSearch" placeholder="Program ara" aria-label="Program ara"></label>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl wide">
+            <thead><tr><th>Program</th><th>Son sürüm</th><th>Boyut</th><th>Güncelleme</th><th>Erişim</th><th class="r">İşlem</th></tr></thead>
+            <tbody id="progRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="row2">
+        <section class="card" id="yukle">
+          <h2>Yeni sürüm yükle</h2>
+          <form id="uploadForm" class="modal-body" novalidate>
+            <label class="drop" id="drop">
+              <svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"></path><path d="M20 16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"></path></svg>
+              <b id="dropTitle">Dosyayı sürükleyin veya seçin</b>
+              <small id="dropHelp">.zip, .exe, .msi, .rar, .7z · en fazla 2 GB</small>
+              <input type="file" id="file" class="sr" accept=".zip,.exe,.msi,.rar,.7z">
+            </label>
+            <div class="grid2f">
+              <label class="field">Program
+                <select class="select" id="upProgram"></select>
+              </label>
+              <label class="field">Sürüm no
+                <input class="input" id="upVersion" placeholder="ör. v2.4.0" maxlength="32" autocomplete="off" spellcheck="false">
+              </label>
+            </div>
+            <label class="field" id="newProgWrap" hidden>Yeni program adı
+              <input class="input" id="upNewProgram" maxlength="80" placeholder="ör. Mobil PDKS">
+            </label>
+            <label class="field">Sürüm notları
+              <textarea class="textarea" id="upNotes" rows="3" maxlength="1000" placeholder="Bu sürümde neler değişti?"></textarea>
+            </label>
+            <div class="progress" id="upProgress" hidden>
+              <div class="progress-top"><span id="upName"></span><b id="upPct">0%</b></div>
+              <div class="bar"><div id="upBar"></div></div>
+              <small class="muted" id="upStatus"></small>
+            </div>
+            <div id="upMsg" class="alert" role="alert" hidden></div>
+            <div class="btn-row">
+              <button type="submit" class="btn btn-navy" id="upBtn">Yüklemeyi başlat</button>
+              <button type="button" class="btn btn-danger" id="upCancel" hidden>Yüklemeyi iptal et</button>
+            </div>
+            <small class="muted">Dosya herkese kapalı depoya yüklenir. SHA-256 parmak izi yükleme sırasında tarayıcınızda hesaplanır.</small>
+          </form>
+        </section>
+
+        <section class="card" id="linkler">
+          <h2>Müşteriye indirme bağlantısı</h2>
+          <p class="muted small">Dosya hiçbir zaman herkese açık olmaz. Müşteriye özel, süreli ve indirme sayısı sınırlı bir bağlantı üretilir.</p>
+          <form id="linkForm" class="modal-body" novalidate>
+            <label class="field">Program ve sürüm
+              <select class="select" id="lnVersion"></select>
+            </label>
+            <label class="field">Müşteri / firma
+              <input class="input" id="lnCustomer" maxlength="100" placeholder="ör. Örnek Şirket A.Ş." autocomplete="off">
+            </label>
+            <div class="grid2f">
+              <label class="field">Geçerlilik
+                <select class="select" id="lnHours"><option value="24">24 saat</option><option value="72">3 gün</option><option value="168">7 gün</option></select>
+              </label>
+              <label class="field">İndirme hakkı
+                <select class="select" id="lnMax"><option value="1">1 kez</option><option value="3" selected>3 kez</option><option value="5">5 kez</option></select>
+              </label>
+            </div>
+            <div id="lnMsg" class="alert" role="alert" hidden></div>
+            <button type="submit" class="btn btn-navy" id="lnBtn">Bağlantı oluştur</button>
+          </form>
+          <div class="link-out" id="lnOut" hidden>
+            <b>Bağlantı hazır</b>
+            <input class="input" id="lnUrl" readonly aria-label="İndirme bağlantısı">
+            <div class="btn-row">
+              <button type="button" class="btn btn-sm" id="lnCopy">Kopyala</button>
+              <a class="btn btn-sm btn-green" id="lnWa" target="_blank" rel="noopener noreferrer">WhatsApp ile gönder</a>
+              <a class="btn btn-sm" id="lnMail">E-posta ile gönder</a>
+            </div>
+            <small class="muted">Güvenlik gereği bağlantı yalnızca şimdi gösterilir; sistemde açık hali saklanmaz.</small>
+          </div>
+          <h3>Bağlantılar</h3>
+          <div id="linkList"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- LİSANSLAR -->
+    <section class="view" id="view-lisans" hidden>
+      <div id="licListView" class="view">
+        <header class="page-head">
+          <div>
+            <span class="kicker">LİSANSLAR</span>
+            <h1>Lisans yönetimi</h1>
+            <p>Anahtar oluşturun, cihazları izleyin, süre uzatın veya askıya alın.</p>
+          </div>
+          <a class="btn btn-gold" href="#lisans-yeni"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Yeni lisans oluştur</a>
+        </header>
+        <div class="stats" id="licStats"></div>
+        <section class="card">
+          <div class="chips" id="licChips"></div>
+          <div class="filters">
+            <label class="search grow"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z"></path><path d="M20 20l-3.5-3.5"></path></svg><input id="licSearch" placeholder="Müşteri, e-posta veya anahtar ara" aria-label="Müşteri, e-posta veya anahtar ara"></label>
+            <label class="field inline">Durum
+              <select class="select" id="licStatus"><option value="">Tümü</option><option value="active">Çalışan</option><option value="expiring">Süresi yaklaşan</option><option value="waiting">Etkinleştirilmemiş</option><option value="stale">Bağlanmayan</option><option value="suspended">Askıda</option><option value="expired">Süresi dolmuş</option><option value="revoked">İptal edilmiş</option></select>
+            </label>
+          </div>
+          <div class="table-wrap">
+            <table class="tbl xwide">
+              <thead><tr><th>Müşteri</th><th>Program</th><th>Lisans anahtarı</th><th>Tür / Bitiş</th><th>Cihaz</th><th>Son doğrulama</th><th>Durum</th><th class="r"></th></tr></thead>
+              <tbody id="licRows"></tbody>
+            </table>
+          </div>
+          <small class="muted">Anahtarlar listede maskeli görünür; tamamı detay ekranında açılır.</small>
+        </section>
+      </div>
+
+      <div id="licNewView" class="view" hidden>
+        <header class="page-head"><div><a href="#lisanslar" class="back">← Lisanslar</a><h1>Yeni lisans oluştur</h1></div></header>
+        <div class="row2 top">
+          <section class="card grow2">
+            <form id="licForm" class="modal-body" novalidate>
+              <fieldset class="fs">
+                <legend>1. Program</legend>
+                <div class="prod-grid" id="licProducts"></div>
+              </fieldset>
+              <fieldset class="fs">
+                <legend>2. Müşteri</legend>
+                <label class="field">Firma unvanı<input class="input" id="licCustomer" maxlength="120" autocomplete="off" placeholder="ör. Örnek Şirket A.Ş."></label>
+                <div class="grid2f">
+                  <label class="field">Yetkili e-posta<input class="input" id="licEmail" type="email" maxlength="200" autocomplete="off"></label>
+                  <label class="field">Yetkili telefon<input class="input" id="licPhone" inputmode="tel" maxlength="20" autocomplete="off" placeholder="05xx xxx xx xx"></label>
+                </div>
+              </fieldset>
+              <fieldset class="fs">
+                <legend>3. Lisans koşulları</legend>
+                <div class="alert alert-info"><b>Yıllık abonelik</b><span>· Bitiş tarihinde program kilitlenir; yenilemede süre uzatılır.</span></div>
+                <div class="grid3f">
+                  <label class="field">Başlangıç<input class="input" id="licStarts" type="date"></label>
+                  <label class="field">Bitiş<input class="input" id="licEnds" type="date"></label>
+                  <label class="field">Sunucu / cihaz<select class="select" id="licDevices"><option>1</option><option>2</option><option>3</option><option>5</option><option>10</option></select></label>
+                </div>
+                <div class="grid2f" id="licLimits"></div>
+                <div class="field"><span>Modüller</span><div class="checks" id="licModules"></div></div>
+                <label class="field">İç not (müşteri görmez)<textarea class="textarea" id="licNote" rows="2" maxlength="500"></textarea></label>
+              </fieldset>
+              <label class="check" id="licDlWrap"><input type="checkbox" id="licWithDl" checked><span id="licDlText">Mesaja kurulum dosyası indirme linkini de ekle (7 gün, 3 indirme)</span></label>
+              <div id="licMsg" class="alert" role="alert" hidden></div>
+              <button type="submit" class="btn btn-navy btn-block" id="licBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M10.8 12.2L20 3M16 7l3 3M18 5l2 2"></path></svg>Lisans anahtarını oluştur</button>
+            </form>
+          </section>
+          <aside class="side-col">
+            <section class="card ok-card" id="licResult" hidden></section>
+            <section class="card">
+              <h3>Müşteri nasıl etkinleştirir?</h3>
+              <ol class="steps">
+                <li>Kurulum sihirbazı veya programın Lisans ekranı açılır.</li>
+                <li>Anahtar girilir, “İnternet ile etkinleştir” tıklanır.</li>
+                <li>ozkandemir.net sunucunun parmak izini kaydeder ve imzalı lisans gönderir.</li>
+                <li>Program 7 günde bir lisansı doğrular; internet kesilirse 30 gün çalışmaya devam eder.</li>
+                <li>Süre biter, lisans askıya alınır veya iptal edilirse program kilitlenir.</li>
+              </ol>
+            </section>
+          </aside>
+        </div>
+      </div>
+
+      <div id="licDetailView" class="view" hidden></div>
+    </section>
+
+    <!-- GÜVENLİK -->
+    <section class="view" id="view-guvenlik" hidden>
+      <header class="page-head">
+        <div>
+          <span class="kicker">GÜVENLİK</span>
+          <h1>Güvenlik durumu ve kayıtlar</h1>
+        </div>
+      </header>
+      <section class="card">
+        <div class="sec-head" id="secHead"></div>
+        <div class="layers" id="layers"></div>
+      </section>
+      <div class="row2">
+        <section class="card">
+          <div class="card-head">
+            <h2>Açık oturumlar</h2>
+            <button type="button" class="btn btn-sm btn-danger" id="revokeOthers">Diğer tüm oturumları kapat</button>
+          </div>
+          <div id="sessList"></div>
+        </section>
+        <section class="card">
+          <h2>Hesap güvenliği</h2>
+          <div class="setting"><div><b>Şifre</b><small id="pwInfo">—</small></div><button type="button" class="btn btn-sm" id="pwBtn">Değiştir</button></div>
+          <div class="setting"><div><b>Doğrulama uygulaması</b><small>Google / Microsoft Authenticator · etkin</small></div><button type="button" class="btn btn-sm" id="totpBtn">Yeniden kur</button></div>
+          <div class="setting"><div><b>Yedek kodlar</b><small id="bcInfo">—</small></div><button type="button" class="btn btn-sm" id="bcBtn">Yenile</button></div>
+          <div class="setting"><div><b>Güvenilir cihazlar</b><small id="trInfo">—</small></div><button type="button" class="btn btn-sm btn-danger" id="trBtn">Sıfırla</button></div>
+        </section>
+      </div>
+      <section class="card">
+        <div class="card-head">
+          <h2>Denetim kaydı</h2>
+          <a class="btn btn-sm" href="/panel/api/audit.csv" download>Excel’e aktar</a>
+        </div>
+        <div class="table-wrap">
+          <table class="tbl mid">
+            <thead><tr><th>Zaman</th><th>Olay</th><th>Ayrıntı</th><th>Konum / IP</th></tr></thead>
+            <tbody id="auditRows"></tbody>
+          </table>
+        </div>
+        <small class="muted">Kayıtlar değiştirilemez ve silinemez; 1 yıl saklanır. Son 200 kayıt gösterilir, tamamı için Excel’e aktarın.</small>
+      </section>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-box" id="modalBox" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button type="button" class="modal-x" id="modalClose" aria-label="Kapat">×</button>
+    <h3 id="modalTitle"></h3>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/panel/common.js"></script>
+<script src="/panel/sha256.js"></script>
+<script src="/panel/app.js"></script>
+<script src="/panel/lisans.js"></script>
+</body>
+</html>

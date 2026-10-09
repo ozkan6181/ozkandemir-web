@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#08263f">
+<title>Panel Girişi | Özkan Demir</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/panel/panel.css">
+</head>
+<body>
+<div class="auth">
+  <section class="auth-hero">
+    <a class="brand" href="/"><span class="brand-mark">ÖD</span><span><b>ÖZKAN DEMİR</b><small>SERBEST MUHASEBECİ MALİ MÜŞAVİR</small></span></a>
+    <div>
+      <span class="kicker">YÖNETİM PANELİ</span>
+      <h1>Programlarınız tek, güvenli bir yerde.</h1>
+      <p>Kurulum dosyalarını yükleyin, sürümleri yönetin, müşterilere süreli ve sayılı indirme bağlantısı gönderin.</p>
+    </div>
+    <div class="features">
+      <div class="feature">
+        <svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>
+        <b>Cloudflare Access</b><small>Panel adresi, onaylı e-posta doğrulanmadan açılmaz.</small>
+      </div>
+      <div class="feature">
+        <svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2h10v20H7z"></path><path d="M11 18h2"></path></svg>
+        <b>İki adımlı doğrulama</b><small>Şifreye ek olarak telefondaki 6 haneli kod.</small>
+      </div>
+      <div class="feature">
+        <svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>
+        <b>Tam denetim kaydı</b><small>Her giriş, yükleme ve indirme silinemez biçimde kayıt altında.</small>
+      </div>
+    </div>
+  </section>
+
+  <section class="auth-side">
+    <form id="loginForm" class="auth-card" novalidate>
+      <div class="auth-head">
+        <span class="kicker">GÜVENLİ GİRİŞ</span>
+        <h2>Panele giriş yapın</h2>
+        <p>Yalnızca yetkili hesap erişebilir.</p>
+      </div>
+      <div id="loginMsg" class="alert" role="alert" hidden></div>
+      <label class="field">E-posta
+        <input class="input" id="email" type="email" autocomplete="username" required maxlength="200" spellcheck="false" autocapitalize="off">
+      </label>
+      <label class="field">Şifre
+        <input class="input" id="password" type="password" autocomplete="current-password" required maxlength="256">
+      </label>
+      <button class="btn btn-navy btn-block" id="loginBtn" type="submit">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 11h12v10H6z"></path><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+        Devam et
+      </button>
+      <div class="alert alert-warn">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path><path d="M12 8v5M12 16h.01"></path></svg>
+        <span>5 hatalı denemeden sonra giriş 15 dakika kilitlenir. Tüm denemeler denetim kaydına işlenir.</span>
+      </div>
+      <small class="auth-foot">Bağlantı TLS ile şifrelidir · <a href="/">ozkandemir.net'e dön</a></small>
+    </form>
+
+    <form id="otpForm" class="auth-card" novalidate hidden>
+      <span class="auth-badge"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 2h10v20H7z"></path><path d="M11 18h2"></path></svg></span>
+      <div class="auth-head">
+        <span class="kicker">ADIM 2 / 2</span>
+        <h2 id="otpTitle">Doğrulama kodunu girin</h2>
+        <p id="otpHelp">Google Authenticator veya Microsoft Authenticator uygulamasındaki 6 haneli kodu yazın. Kod her 30 saniyede yenilenir.</p>
+      </div>
+      <div id="otpMsg" class="alert" role="alert" hidden></div>
+      <fieldset class="otp" id="otpBoxes">
+        <legend class="sr">6 haneli doğrulama kodu</legend>
+        <input aria-label="1. hane" inputmode="numeric" autocomplete="one-time-code" maxlength="1">
+        <input aria-label="2. hane" inputmode="numeric" maxlength="1">
+        <input aria-label="3. hane" inputmode="numeric" maxlength="1">
+        <input aria-label="4. hane" inputmode="numeric" maxlength="1">
+        <input aria-label="5. hane" inputmode="numeric" maxlength="1">
+        <input aria-label="6. hane" inputmode="numeric" maxlength="1">
+      </fieldset>
+      <label class="field" id="backupWrap" hidden>Yedek kod
+        <input class="input mono" id="backupCode" placeholder="ABCD-EFGH" autocomplete="off" spellcheck="false" autocapitalize="characters" maxlength="12">
+      </label>
+      <label class="check"><input type="checkbox" id="trust">Bu cihaza 30 gün güven (yalnızca kişisel bilgisayar)</label>
+      <button class="btn btn-gold btn-block" id="otpBtn" type="submit">Doğrula ve giriş yap</button>
+      <div class="auth-links">
+        <button type="button" class="linkbtn" id="backBtn">← Geri dön</button>
+        <button type="button" class="linkbtn" id="backupToggle">Telefonum yanımda değil (yedek kod)</button>
+      </div>
+      <p class="timer" id="otpTimer"></p>
+    </form>
+  </section>
+</div>
+<script src="/panel/common.js"></script>
+<script src="/panel/login.js"></script>
+</body>
+</html>

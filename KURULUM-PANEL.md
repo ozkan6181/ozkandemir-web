@@ -1,0 +1,169 @@
+# ozkandemir.net V3.6.0 — Yönetim Paneli ve Online Lisans Kurulumu
+
+Bu kılavuz, V3.5.8 üzerinde çalışan siteye **şifreli yönetim panelini**, **program yükleme / müşteri indirme bağlantılarını** ve **online lisans yönetimini** ekler. Mevcut sayfalar, BIST kartı, TCMB, haberler, hesaplama araçları ve e-posta seçici **değişmez**.
+
+Tahmini süre: 30–40 dakika (bir kez).
+
+---
+
+## 0. Ön koşullar
+
+| Gerekli | Kontrol |
+|---|---|
+| Node.js 20 veya üzeri | `node -v` |
+| Cloudflare hesabına giriş | `npx wrangler login` (tarayıcı açılır, onaylayın) |
+| Telefonda doğrulama uygulaması | Google Authenticator veya Microsoft Authenticator |
+
+> Cloudflare **Workers Paid** ($5/ay) önerilir. Ücretsiz planda da çalışır; kurulum betiği ücretsiz plan için ayar seçeneği sunar (6. adım).
+
+---
+
+## 1. Dosyaları yerleştirin
+
+1. ZIP içindeki proje klasörünün içeriğini mevcut `ozkandemir-web` klasörünüzün (GitHub deposu) **üzerine** kopyalayın.
+2. Komut satırını bu klasörde açıp çalıştırın:
+
+```bash
+npm install
+npm test
+```
+
+`calculator tests: OK`, `panel tests: OK (41 test)` ve `license tests: OK (33 test)` görmelisiniz.
+
+---
+
+## 2. Dosya deposu (R2)
+
+1. Cloudflare paneli → **R2 Object Storage** → ilk kez kullanıyorsanız **Etkinleştir / Purchase R2** (10 GB'a kadar ücretsiz; Cloudflare kart bilgisi isteyebilir).
+2. Depoyu oluşturun:
+
+```bash
+npx wrangler r2 bucket create ozkandemir-programlar
+```
+
+Depo herkese **kapalıdır**; dosyalar yalnızca panelden üretilen süreli bağlantılarla iner. R2'de "Public access" **açmayın**.
+
+---
+
+## 3. Veritabanı (D1)
+
+```bash
+npx wrangler d1 create ozkandemir-panel
+```
+
+Çıktıdaki `database_id` değerini kopyalayıp `wrangler.jsonc` içinde şu satıra yapıştırın:
+
+```jsonc
+"database_id": "BURAYA_D1_DATABASE_ID_YAPISTIRIN",
+```
+
+Sonra tabloları oluşturun:
+
+```bash
+npm run db:migrate
+```
+
+---
+
+## 4. İlk yayın
+
+```bash
+npx wrangler deploy
+```
+
+(GitHub → Cloudflare otomatik yayını kullanıyorsanız değişiklikleri `main` dalına göndermeniz yeterli.)
+
+---
+
+## 5. Lisans imza anahtarı (bir kez)
+
+```bash
+npm run lisans:anahtar
+```
+
+- `LISANS-ACIK-ANAHTAR.txt` oluşur → içindeki değer **6 programa gömülür** (gizli değildir).
+- Gizli anahtar Cloudflare'a `LICENSE_SIGNING_KEY` olarak kaydedilir.
+- `LISANS-GIZLI-ANAHTAR-YEDEK.txt` oluşur → **şifreli USB'ye / parola yöneticisine yedekleyip klasörden silin.**
+
+> ⚠️ Bu anahtarı **bir daha üretmeyin**. Yeniden üretilirse dağıtılmış programlar lisans doğrulayamaz.
+
+---
+
+## 6. Yönetici hesabı (şifre + iki adımlı doğrulama)
+
+```bash
+npm run panel:hesap
+```
+
+1. **1) İlk kurulum** seçin, Workers planınızı seçin.
+2. E-posta ve en az 14 karakterlik şifre belirleyin (büyük harf, küçük harf ve rakam).
+3. Ekrandaki anahtarı telefon uygulamasına ekleyin: **"+" → "Kurulum anahtarı girin" → Hesap: ozkandemir.net → Zamana dayalı**. Uygulamanın kodunu yazarak doğrulayın.
+4. **10 yedek kodu** yazdırın veya parola yöneticisine kaydedin (telefon kaybolursa giriş için).
+5. "Cloudflare'a yükleyeyim mi?" → **E**.
+6. `PANEL-SIFRELEME-ANAHTARI-YEDEK.txt` dosyasını güvenli yere yedekleyip klasörden silin (hesap sıfırlamada gerekir).
+
+Giriş: **https://ozkandemir.net/panel/**
+
+---
+
+## 7. Cloudflare Access — ek güvenlik kapısı (önerilir, ücretsiz)
+
+Access açıldığında panel adresi, şifre ekranı dahil, **onaylı e-postanıza gelen kod girilmeden hiç görünmez**.
+
+1. Cloudflare paneli → **Zero Trust** (ilk kez ise takım adı seçin, **Free** planı seçin).
+2. **Access → Applications → Add an application → Self-hosted**.
+3. Application name: `ozkandemir panel` · Session duration: `24 hours`.
+4. Public hostname: Domain **ozkandemir.net**, Path **`panel`** (yalnızca bu yol — `/indir` ve `/lisans` **eklenmez**; müşteriler ve programlar onları kullanır).
+5. Policy: **Allow** → Include → **Emails** → `ozkan6181@hotmail.com`. Login method: **One-time PIN**.
+6. Kaydedin. Uygulamanın **Application Audience (AUD) Tag** değerini ve **Settings → Team domain** (ör. `ozkan.cloudflareaccess.com`) değerini kopyalayın.
+7. `wrangler.jsonc` içinde:
+
+```jsonc
+"vars": {
+  "ACCESS_TEAM_DOMAIN": "ozkan.cloudflareaccess.com",
+  "ACCESS_AUD": "buraya-aud-tag"
+}
+```
+
+8. `npx wrangler deploy`. Panel → **Güvenlik ve kayıtlar** ekranında "Cloudflare Access kapısı" yeşil olmalı.
+
+> Worker, Access imzasını ayrıca kendisi doğrular. Access yanlış yapılandırılırsa panel "Erişim reddedildi" der; `vars` alanını boşaltıp yayınlayarak eski haline dönebilirsiniz.
+
+---
+
+## 8. Kontrol listesi
+
+- [ ] `https://ozkandemir.net/` ana sayfa, BIST, TCMB, haberler eskisi gibi çalışıyor
+- [ ] `/panel/` → şifre → 6 haneli kod → panel açıldı
+- [ ] Bir programın kurulum dosyası yüklendi (Programlar → Yeni sürüm yükle)
+- [ ] Lisanslar → Yeni lisans → anahtar üretildi, WhatsApp mesajı hazırlandı
+- [ ] `https://ozkandemir.net/lisans/api/public-key` → `{"alg":"Ed25519","x":"…"}` (x, LISANS-ACIK-ANAHTAR.txt ile aynı)
+- [ ] Güvenlik ekranında 6 katmanın durumu görülüyor
+
+---
+
+## 9. Acil durumlar
+
+| Durum | Çözüm |
+|---|---|
+| Telefon yanımda değil | Girişte "Telefonum yanımda değil" → yedek kod |
+| Telefon kayboldu | Yedek kodla girin → Güvenlik → Doğrulama uygulaması → **Yeniden kur** |
+| Şifre unutuldu / yedek kod da yok | `npm run panel:hesap` → **2) Hesabı sıfırla** (`PANEL-SIFRELEME-ANAHTARI-YEDEK.txt` gerekir). Lisanslar ve dosyalar korunur. |
+| "Çok fazla hatalı deneme" | 15 dakika bekleyin |
+| Şüpheli giriş uyarısı | Güvenlik → **Diğer tüm oturumları kapat** + şifre değiştir |
+| Müşteri sunucu değiştirdi | Lisans detayı → eski cihazda **Cihazı kaldır** → müşteri yeni sunucuda etkinleştirir |
+| Müşterinin sunucusu internete çıkamıyor | Lisans detayı → **Çevrimdışı etkinleştir** |
+
+---
+
+## 10. Teknik özet
+
+| Yol | Ne | Koruma |
+|---|---|---|
+| `/panel/`, `/panel/api/*` | Yönetim paneli | Access (ops.) + şifre + TOTP + oturum çerezi + CSRF + CSP |
+| `/indir/<bağlantı>` | Müşteri indirme sayfası | 256-bit tek kullanımlık bağlantı, süre + indirme sayısı sınırı |
+| `/lisans/api/activate`, `/check`, `/public-key` | Programların lisans API'si | Anahtar + cihaz parmak izi, IP başına deneme sınırı, Ed25519 imzalı yanıt |
+
+Cloudflare kaynakları: Worker `ozkandemir-web` · D1 `ozkandemir-panel` · R2 `ozkandemir-programlar` · secrets `PANEL_ENC_KEY`, `LICENSE_SIGNING_KEY`.
+
+Programlara lisans ekleme: `lisans-istemcisi/README.md`.
