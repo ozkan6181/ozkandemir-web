@@ -456,7 +456,7 @@ async function security(c) {
   const accessConfigured = Boolean(env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD);
   const layers = [
     { key: 'access', title: 'Cloudflare Access kapısı', ok: accessConfigured && c.accessOk === true,
-      detail: accessConfigured ? 'Panel adresine yalnızca onaylı e-posta, gelen kodla ulaşır.' : 'Henüz açılmadı — kurulum kılavuzu 5. adım. Açılana kadar panel şifre + kod ile korunur.' },
+      detail: accessConfigured ? 'Panel adresine yalnızca onaylı e-posta, gelen kodla ulaşır.' : 'Henüz açılmadı — kurulum kılavuzu 6. adım. Açılana kadar panel şifre + kod ile korunur.' },
     { key: 'password', title: 'Güçlü şifre saklama', ok: String(admin.pass_hash).startsWith('pbkdf2-sha256$'), detail: 'Şifre geri çevrilemez PBKDF2 özeti olarak tutulur, düz metin asla.' },
     { key: 'totp', title: 'İki adımlı doğrulama', ok: Boolean(admin.totp_enc), detail: 'Her girişte doğrulama uygulamasından 6 haneli kod; anahtar veritabanında AES-256 ile şifreli.' },
     { key: 'ratelimit', title: 'Deneme sınırı ve kilit', ok: true, detail: `Aynı IP'den ${CFG.IP_MAX} hatada 15 dk kilit; toplamda ${CFG.ACCT_MAX} hatada hesap kilidi.` },

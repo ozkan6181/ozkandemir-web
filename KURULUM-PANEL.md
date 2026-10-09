@@ -1,4 +1,4 @@
-# ozkandemir.net V3.6.0 — Yönetim Paneli ve Online Lisans Kurulumu
+# ozkandemir.net V3.6.1 — Yönetim Paneli ve Online Lisans Kurulumu
 
 Bu kılavuz, V3.5.8 üzerinde çalışan siteye **şifreli yönetim panelini**, **program yükleme / müşteri indirme bağlantılarını** ve **online lisans yönetimini** ekler. Mevcut sayfalar, BIST kartı, TCMB, haberler, hesaplama araçları ve e-posta seçici **değişmez**.
 
@@ -14,7 +14,7 @@ Tahmini süre: 30–40 dakika (bir kez).
 | Cloudflare hesabına giriş | `npx wrangler login` (tarayıcı açılır, onaylayın) |
 | Telefonda doğrulama uygulaması | Google Authenticator veya Microsoft Authenticator |
 
-> Cloudflare **Workers Paid** ($5/ay) önerilir. Ücretsiz planda da çalışır; kurulum betiği ücretsiz plan için ayar seçeneği sunar (6. adım).
+> Cloudflare **Workers Paid** ($5/ay) önerilir. Ücretsiz planda da çalışır; kurulum betiği ücretsiz plan için ayar seçeneği sunar (5. adım).
 
 ---
 
@@ -28,54 +28,44 @@ npm install
 npm test
 ```
 
-`calculator tests: OK`, `panel tests: OK (41 test)` ve `license tests: OK (33 test)` görmelisiniz.
+`calculator tests: OK`, `config tests: OK (4 test)`, `panel tests: OK (41 test)` ve `license tests: OK (33 test)` görmelisiniz.
 
 ---
 
-## 2. Dosya deposu (R2)
+## 2. Panel altyapısı — tek komut (D1 veritabanı + R2 deposu)
 
-1. Cloudflare paneli → **R2 Object Storage** → ilk kez kullanıyorsanız **Etkinleştir / Purchase R2** (10 GB'a kadar ücretsiz; Cloudflare kart bilgisi isteyebilir).
-2. Depoyu oluşturun:
+> **Önemli:** Bu sürümde `wrangler.jsonc` panel kaynakları olmadan da yayınlanır. GitHub'a gönderdiğiniz anda site güncellenir; panel bu adım tamamlanana kadar "Panel kurulumu tamamlanmadı" der. (V3.6.0'da veritabanı kimliği yer tutucu olduğu için Cloudflare yayını reddediyordu — V3.6.1'de düzeltildi.)
+
+1. İlk kez R2 kullanıyorsanız: Cloudflare paneli → **R2 Object Storage** → **Etkinleştir** (10 GB'a kadar ücretsiz; kart bilgisi istenebilir). Depoda "Public access" **açmayın**.
+2. Proje klasöründe:
 
 ```bash
-npx wrangler r2 bucket create ozkandemir-programlar
+npm run panel:altyapi
 ```
 
-Depo herkese **kapalıdır**; dosyalar yalnızca panelden üretilen süreli bağlantılarla iner. R2'de "Public access" **açmayın**.
+Betik sırasıyla:
+- `ozkandemir-panel` D1 veritabanını oluşturur (varsa kullanır),
+- `ozkandemir-programlar` R2 deposunu oluşturur (varsa kullanır),
+- veritabanı kimliğini **`wrangler.jsonc` dosyasına kendisi yazar** (elle kopyalama yok),
+- tabloları kurar (onay sorulursa `y`).
+
+Tekrar çalıştırmak güvenlidir.
 
 ---
 
-## 3. Veritabanı (D1)
+## 3. Yayın
 
-```bash
-npx wrangler d1 create ozkandemir-panel
-```
-
-Çıktıdaki `database_id` değerini kopyalayıp `wrangler.jsonc` içinde şu satıra yapıştırın:
-
-```jsonc
-"database_id": "BURAYA_D1_DATABASE_ID_YAPISTIRIN",
-```
-
-Sonra tabloları oluşturun:
-
-```bash
-npm run db:migrate
-```
-
----
-
-## 4. İlk yayın
+Değişen `wrangler.jsonc` dosyasını GitHub'a gönderin (GitHub Desktop: **Commit → Push**) ya da:
 
 ```bash
 npx wrangler deploy
 ```
 
-(GitHub → Cloudflare otomatik yayını kullanıyorsanız değişiklikleri `main` dalına göndermeniz yeterli.)
+`npm test` içindeki yapılandırma testi, `wrangler.jsonc` içinde yer tutucu veya geçersiz kimlik kalmışsa sizi GitHub'a göndermeden önce uyarır.
 
 ---
 
-## 5. Lisans imza anahtarı (bir kez)
+## 4. Lisans imza anahtarı (bir kez)
 
 ```bash
 npm run lisans:anahtar
@@ -89,7 +79,7 @@ npm run lisans:anahtar
 
 ---
 
-## 6. Yönetici hesabı (şifre + iki adımlı doğrulama)
+## 5. Yönetici hesabı (şifre + iki adımlı doğrulama)
 
 ```bash
 npm run panel:hesap
@@ -106,7 +96,7 @@ Giriş: **https://ozkandemir.net/panel/**
 
 ---
 
-## 7. Cloudflare Access — ek güvenlik kapısı (önerilir, ücretsiz)
+## 6. Cloudflare Access — ek güvenlik kapısı (önerilir, ücretsiz)
 
 Access açıldığında panel adresi, şifre ekranı dahil, **onaylı e-postanıza gelen kod girilmeden hiç görünmez**.
 
@@ -131,7 +121,7 @@ Access açıldığında panel adresi, şifre ekranı dahil, **onaylı e-postanı
 
 ---
 
-## 8. Kontrol listesi
+## 7. Kontrol listesi
 
 - [ ] `https://ozkandemir.net/` ana sayfa, BIST, TCMB, haberler eskisi gibi çalışıyor
 - [ ] `/panel/` → şifre → 6 haneli kod → panel açıldı
@@ -142,7 +132,7 @@ Access açıldığında panel adresi, şifre ekranı dahil, **onaylı e-postanı
 
 ---
 
-## 9. Acil durumlar
+## 8. Acil durumlar
 
 | Durum | Çözüm |
 |---|---|
@@ -156,7 +146,7 @@ Access açıldığında panel adresi, şifre ekranı dahil, **onaylı e-postanı
 
 ---
 
-## 10. Teknik özet
+## 9. Teknik özet
 
 | Yol | Ne | Koruma |
 |---|---|---|

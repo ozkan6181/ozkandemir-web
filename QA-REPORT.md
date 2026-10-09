@@ -1,4 +1,4 @@
-# V3.6.0 QA
+# V3.6.1 QA
 
 Otomatik testler (`npm test`): hepsi geçti
 - Hesaplama araçları: OK
@@ -19,3 +19,9 @@ Bağımsız güvenlik incelemesi (09.10.2026) bulguları ve düzeltmeleri:
 - 2FA yalnızca şifreyle değiştirilebiliyordu → mevcut kod veya yedek kod da gerekir (testli).
 - Geçersiz başlangıç tarihi 500 → 400. Doğrulama kayıtları 6 saatte bir, 180 günden eskiler silinir.
 - Python istemcisi: eski lisans dosyasının geri yüklenmesi ikinci kayıt yeriyle (Windows kayıt defteri) yakalanır.
+
+## V3.6.1 — GitHub → Cloudflare yayın hatası (09.10.2026)
+- Neden: `wrangler.jsonc` içinde D1 `database_id` yer tutucusu (`BURAYA_D1_DATABASE_ID_YAPISTIRIN`) ve henüz oluşturulmamış R2 deposu vardı; kılavuzun altyapı adımları tamamlanmadan GitHub'a gönderilince Cloudflare yayını reddetti, site V3.5.8'de kaldı.
+- Düzeltme: D1/R2 bağlantıları varsayılan yapılandırmadan çıkarıldı; site panel kaynakları olmadan yayınlanır (panel "kurulum tamamlanmadı" der). `npm run panel:altyapi` veritabanını ve depoyu oluşturup kimliği `wrangler.jsonc` dosyasına kendisi yazar.
+- Koruma: `tests/test-config.mjs` — yer tutucu / geçersiz kimlik / bozuk JSONC varsa `npm test` başarısız olur; kaynaksız çalışma ve yamanın tekrar çalıştırılabilirliği test edilir.
+- Panel, lisans ve giriş kodunda değişiklik gerekmedi (GitHub'daki kod paketle birebir aynıydı).

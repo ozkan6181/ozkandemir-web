@@ -1,10 +1,10 @@
-# Özkan Demir Web V3.6.0
+# Özkan Demir Web V3.6.1
 
 **Yeni:** Şifreli yönetim paneli (`/panel/`), program yükleme ve müşteriye süreli indirme bağlantısı, 6 program için online lisans yönetimi (anahtar üretimi, imzalı etkinleştirme, cihaz takibi, süre uzatma, askıya alma).
 
 - Kurulum: **KURULUM-PANEL.md**
 - Programlara lisans ekleme: **lisans-istemcisi/README.md**
-- Test: `npm test` (hesaplama + 41 panel + 33 lisans testi)
+- Test: `npm test` (hesaplama + yapılandırma + 41 panel + 33 lisans testi)
 
 ## Korunan çalışan mantıklar (V3.5.8'den)
 BIST 100 özel kart (`/api/bist`, TradingView yok) · `txt()` Türkçe charset çözümü · `/api/tcmb` · `/api/news` · teklif e-posta seçici · `data-gallery` slider · profil görselleri. `src/index.js` içinde yalnızca panel yönlendirmesi eklendi (2 satır).

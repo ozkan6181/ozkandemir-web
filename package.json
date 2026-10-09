@@ -1,11 +1,12 @@
 {
   "name": "ozkandemir-web",
-  "version": "3.6.0",
+  "version": "3.6.1",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "test": "node tests/test-calculators.js && node tests/test-panel.mjs && node tests/test-license.mjs",
+    "test": "node tests/test-calculators.js && node tests/test-config.mjs && node tests/test-panel.mjs && node tests/test-license.mjs",
+    "panel:altyapi": "node scripts/panel-altyapi.mjs",
     "db:migrate": "wrangler d1 migrations apply ozkandemir-panel --remote",
     "panel:hesap": "node scripts/setup-admin.mjs",
     "lisans:anahtar": "node scripts/lisans-imza-anahtari.mjs"

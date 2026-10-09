@@ -39,3 +39,36 @@ export async function buildSigningKey() {
   const secret = JSON.stringify({ kty: 'OKP', crv: 'Ed25519', d: jwk.d, x: jwk.x });
   return { secret, publicX: jwk.x };
 }
+
+// wrangler.jsonc içine panel kaynaklarını yazar (tekrar çalıştırılabilir)
+export const PANEL_DB = 'ozkandemir-panel';
+export const PANEL_BUCKET = 'ozkandemir-programlar';
+export function patchWranglerConfig(text, dbId) {
+  const START = '// PANEL_ALTYAPI_BASLANGIC', END = '// PANEL_ALTYAPI_BITIS';
+  const a = text.indexOf(START), b = text.indexOf(END);
+  if (a < 0 || b < 0 || b < a) throw new Error('wrangler.jsonc içinde PANEL_ALTYAPI işaretleri bulunamadı.');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dbId)) throw new Error('Geçersiz D1 kimliği.');
+  const block = `${START} — "npm run panel:altyapi" tarafından yazıldı
+  "d1_databases": [
+    { "binding": "DB", "database_name": "${PANEL_DB}", "database_id": "${dbId}", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    { "binding": "FILES", "bucket_name": "${PANEL_BUCKET}" }
+  ],
+  `;
+  return text.slice(0, a) + block + text.slice(b);
+}
+
+// JSONC → nesne (yorumları ve sondaki virgülleri temizler; dizgelerin içine dokunmaz)
+export function parseJsonc(text) {
+  let out = '', i = 0, inStr = false;
+  while (i < text.length) {
+    const ch = text[i], nx = text[i + 1];
+    if (inStr) { out += ch; if (ch === '\\') { out += nx; i += 2; continue; } if (ch === '"') inStr = false; i++; continue; }
+    if (ch === '"') { inStr = true; out += ch; i++; continue; }
+    if (ch === '/' && nx === '/') { while (i < text.length && text[i] !== '\n') i++; continue; }
+    if (ch === '/' && nx === '*') { i = text.indexOf('*/', i + 2) + 2; continue; }
+    out += ch; i++;
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'));
+}

@@ -8,23 +8,14 @@
     "binding": "ASSETS",
     // /api/* : mevcut canlı veri API'leri (BIST, TCMB, haberler)
     // /panel, /panel/* : V3.6 yönetim paneli (ekranlar + /panel/api/*)
-    // /indir/* : müşteri indirme bağlantıları
-    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*"]
+    // /indir/* : müşteri indirme bağlantıları · /lisans/api/* : programların lisans API'si
+    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*"]
   },
-  // V3.6 Panel veritabanı — database_id değerini "npx wrangler d1 create ozkandemir-panel" çıktısından yapıştırın
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "ozkandemir-panel",
-      "database_id": "BURAYA_D1_DATABASE_ID_YAPISTIRIN",
-      "migrations_dir": "migrations"
-    }
-  ],
-  // V3.6 Program dosyaları — herkese kapalı R2 deposu
-  "r2_buckets": [
-    { "binding": "FILES", "bucket_name": "ozkandemir-programlar" }
-  ],
-  // Cloudflare Access (KURULUM-PANEL.md 5. adım). Boş bırakılırsa panel şifre + doğrulama kodu ile korunur.
+  // PANEL_ALTYAPI_BASLANGIC — bu blok "npm run panel:altyapi" tarafından otomatik doldurulur.
+  // Panel kaynakları (D1 veritabanı + R2 deposu) oluşturulana kadar site normal yayınlanır,
+  // panel "kurulum tamamlanmadı" uyarısı verir.
+  // PANEL_ALTYAPI_BITIS
+  // Cloudflare Access (KURULUM-PANEL.md 6. adım). Boş bırakılırsa panel şifre + doğrulama kodu ile korunur.
   "vars": {
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": ""
