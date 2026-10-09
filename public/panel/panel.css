@@ -242,3 +242,11 @@ textarea.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 .stat b.warn-text{color:var(--warn)}
 .page-head>.btn-row{flex-direction:row;align-items:center}
 .tbl td.mono.nowrap{white-space:nowrap}
+
+/* İlk kurulum */
+.qr-box{display:flex;justify-content:center;padding:12px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.qr-box svg{width:220px;height:220px;max-width:100%}
+.qr-alt summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--blue)}
+.qr-alt{display:flex;flex-direction:column;gap:8px}
+.qr-alt[open]{gap:8px}
+a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}

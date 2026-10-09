@@ -432,7 +432,9 @@ await test('Diğer oturumları kapat', async () => {
 await test('Güvenlik ekranı: katmanlar, Access kapalı uyarısı, yeni cihaz uyarısı kaydı', async () => {
   const s = await admin.req('GET', '/panel/api/security');
   assert.equal(s.status, 200);
-  assert.equal(s.data.layers.length, 6);
+  assert.equal(s.data.layers.length, 7);
+  assert.equal(s.data.layers.find((l) => l.key === 'keys').ok, false, 'test ortamında anahtarlar secret değil (PANEL_ENC_KEY var, imza anahtarı yok)');
+  assert.match(s.data.publicKey, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(s.data.layers.find((l) => l.key === 'access').ok, false);
   assert.equal(s.data.allOk, false);
   assert.equal(s.data.backup.left, 9);

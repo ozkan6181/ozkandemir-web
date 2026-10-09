@@ -7,18 +7,21 @@
     "directory": "./public",
     "binding": "ASSETS",
     // /api/* : mevcut canlı veri API'leri (BIST, TCMB, haberler)
-    // /panel, /panel/* : V3.6 yönetim paneli (ekranlar + /panel/api/*)
+    // /panel, /panel/* : yönetim paneli (ekranlar + /panel/api/*)
     // /indir/* : müşteri indirme bağlantıları · /lisans/api/* : programların lisans API'si
     "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*"]
   },
-  // PANEL_ALTYAPI_BASLANGIC — bu blok "npm run panel:altyapi" tarafından otomatik doldurulur.
-  // Panel kaynakları (D1 veritabanı + R2 deposu) oluşturulana kadar site normal yayınlanır,
-  // panel "kurulum tamamlanmadı" uyarısı verir.
-  // PANEL_ALTYAPI_BITIS
-  // Cloudflare Access (KURULUM-PANEL.md 6. adım). Boş bırakılırsa panel şifre + doğrulama kodu ile korunur.
+  // Panel veritabanı: kimlik yazılmadığı için Cloudflare ilk yayında otomatik oluşturur ve bağlar.
+  // Tablolar ve gizli anahtarlar panel ilk açıldığında otomatik kurulur.
+  "d1_databases": [
+    { "binding": "DB" }
+  ],
   "vars": {
+    // Cloudflare Access (isteğe bağlı ek kapı). Boşsa panel şifre + doğrulama kodu ile korunur.
     "ACCESS_TEAM_DOMAIN": "",
-    "ACCESS_AUD": ""
+    "ACCESS_AUD": "",
+    // Web üzerinden ilk kurulum kodunun SHA-256 özeti (kodun kendisi değil). Yönetici hesabı oluşunca kurulum kapanır.
+    "SETUP_CODE_HASH": "b7af38bc1703ea279170e7e6aeb4b6e7164acdd45ca5e2da1d21b11d027edbdb"
   },
   "observability": { "enabled": true }
 }

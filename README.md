@@ -1,4 +1,4 @@
-# Özkan Demir Web V3.6.1
+# Özkan Demir Web V3.7.0
 
 **Yeni:** Şifreli yönetim paneli (`/panel/`), program yükleme ve müşteriye süreli indirme bağlantısı, 6 program için online lisans yönetimi (anahtar üretimi, imzalı etkinleştirme, cihaz takibi, süre uzatma, askıya alma).
 

@@ -109,6 +109,10 @@ async function signingKey(env) {
   return signCache;
 }
 
+export async function signingPublicKey(env) {
+  return (await signingKey(env)).x;
+}
+
 export async function signPayload(env, payload) {
   const { key } = await signingKey(env);
   const body = b64url(new TextEncoder().encode(JSON.stringify(payload)));

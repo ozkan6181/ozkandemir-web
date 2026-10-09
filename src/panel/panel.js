@@ -1,4 +1,4 @@
-// ozkandemir.net V3.6 — Yönetim paneli API'si ve müşteri indirme sayfası
+// ozkandemir.net V3.7 — Yönetim paneli API'si, web üzerinden ilk kurulum ve müşteri indirme sayfası
 import {
   now, randomBytes, randomToken, sha256hex, timingSafeEqual,
   hashPassword, verifyPassword, passwordProblem,
@@ -14,6 +14,8 @@ import {
   handleLicenseApi, licenseProducts, listLicenses, createLicense, getLicense, updateLicense, extendLicense,
   suspendLicense, resumeLicense, revokeLicense, removeDevice, offlineActivate,
 } from './license.js';
+import { prepareEnv } from './bootstrap.js';
+import { signingPublicKey } from './license.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -461,7 +463,8 @@ async function security(c) {
     { key: 'totp', title: 'İki adımlı doğrulama', ok: Boolean(admin.totp_enc), detail: 'Her girişte doğrulama uygulamasından 6 haneli kod; anahtar veritabanında AES-256 ile şifreli.' },
     { key: 'ratelimit', title: 'Deneme sınırı ve kilit', ok: true, detail: `Aynı IP'den ${CFG.IP_MAX} hatada 15 dk kilit; toplamda ${CFG.ACCT_MAX} hatada hesap kilidi.` },
     { key: 'cookie', title: 'Güvenli oturum çerezi', ok: c.url.protocol === 'https:' || c.url.hostname === 'localhost', detail: 'HttpOnly, Secure, SameSite=Strict; 30 dk hareketsizlikte, en geç 8 saatte biter.' },
-    { key: 'storage', title: 'Özel dosya deposu', ok: Boolean(env.FILES), detail: 'Dosyalar herkese kapalı R2 deposunda; yalnızca süreli, sayılı indirme linkiyle iner.' },
+    { key: 'storage', title: 'Özel dosya deposu', ok: Boolean(env.FILES), detail: env.FILES ? 'Dosyalar herkese kapalı R2 deposunda; yalnızca süreli, sayılı indirme linkiyle iner.' : 'R2 dosya deposu henüz etkin değil; program yükleme kapalı. Cloudflare panelinde R2 hizmetini bir kez etkinleştirin.' },
+    { key: 'keys', title: 'Anahtar saklama', ok: env.KEY_SOURCE === 'secret', detail: env.KEY_SOURCE === 'secret' ? 'Şifreleme ve lisans imza anahtarları Cloudflare gizli değişkenlerinde (veritabanından ayrı).' : 'Anahtarlar otomatik üretildi ve veritabanında saklanıyor. Çalışır; daha güçlü koruma için Cloudflare gizli değişkenine taşınabilir.' },
   ];
   return json({
     layers,
@@ -475,6 +478,7 @@ async function security(c) {
     backup: { total: backup.total || 0, left: backup.left || 0 },
     trustedDevices: trusted.n,
     email: admin.email,
+    publicKey: await signingPublicKey(env).catch(() => ''),
   });
 }
 
@@ -596,6 +600,67 @@ async function auditCsv(c) {
   });
 }
 
+// ---------- Web üzerinden ilk kurulum ----------
+// Yönetici hesabı yokken, yalnızca site sahibine verilen tek kullanımlık kurulum koduyla açılır.
+// Kodun kendisi değil SHA-256 özeti yapılandırmadadır (SETUP_CODE_HASH). Hesap oluşunca kurulum kalıcı olarak kapanır.
+const SETUP_ITER = 10000; // Workers ücretsiz planın CPU sınırına uygun; giriş ayrıca iki adımlı kodla korunur
+const normSetupCode = (s) => String(s || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+export const setupCodeHash = (code) => sha256hex('od-setup:' + normSetupCode(code));
+
+async function setupGuard(c) {
+  const r = await chargeAttempt(c.env, 'setup:' + c.cl.ip, c.t, CFG.IP_MAX, CFG.FAIL_WINDOW, CFG.LOCK_SECS);
+  return r && r.locked_until > c.t ? lockedResp(r.locked_until, c.t) : null;
+}
+
+async function setupStatus(c) {
+  return json({ needsSetup: !(await getAdmin(c.env)), setupEnabled: Boolean(c.env.SETUP_CODE_HASH) });
+}
+
+async function setupStart(c) {
+  if (await getAdmin(c.env)) return fail(409, 'Kurulum zaten tamamlanmış. Giriş ekranını kullanın.');
+  if (!c.env.SETUP_CODE_HASH) return fail(503, 'Kurulum kodu tanımlı değil.');
+  const guard = await setupGuard(c);
+  if (guard) return guard;
+  const b = await readJson(c.req);
+  if (!timingSafeEqual(await setupCodeHash(b.setupCode), String(c.env.SETUP_CODE_HASH).toLowerCase())) {
+    await audit(c, 'Başarısız giriş', 'Hatalı ilk kurulum kodu');
+    return fail(401, 'Kurulum kodu hatalı.');
+  }
+  const email = String(b.email || '').trim().toLowerCase().slice(0, 200);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(400, 'Geçerli bir e-posta adresi girin.');
+  const problem = passwordProblem(b.password);
+  if (problem) return fail(400, problem);
+  const secret = base32Encode(randomBytes(20));
+  const token = randomToken(32);
+  await run(c.env, 'DELETE FROM setup_pending WHERE expires_at < ?', c.t);
+  await run(c.env, 'INSERT INTO setup_pending (token_hash, email, pass_hash, totp_enc, expires_at) VALUES (?, ?, ?, ?, ?)',
+    await sha256hex(token), email, await hashPassword(String(b.password), undefined, SETUP_ITER), await encryptText(c.env.PANEL_ENC_KEY, secret), c.t + 15 * 60);
+  return json({ token, secret: secret.match(/.{1,4}/g).join(' '), uri: otpauthUri(secret, email) });
+}
+
+async function setupFinish(c) {
+  if (await getAdmin(c.env)) return fail(409, 'Kurulum zaten tamamlanmış. Giriş ekranını kullanın.');
+  const guard = await setupGuard(c);
+  if (guard) return guard;
+  const b = await readJson(c.req);
+  const tok = String(b.token || '');
+  if (!TOKEN_RE.test(tok)) return fail(400, 'Geçersiz kurulum isteği.');
+  const p = await first(c.env, 'SELECT * FROM setup_pending WHERE token_hash = ? AND expires_at > ?', await sha256hex(tok), c.t);
+  if (!p) return fail(401, 'Kurulum süresi doldu. Lütfen baştan başlayın.', { restart: true });
+  const step = await verifyTotp(base32Decode(await decryptText(c.env.PANEL_ENC_KEY, p.totp_enc)), b.code, 0, c.t);
+  if (step === null) return fail(401, 'Kod tutmadı. Telefondaki güncel 6 haneli kodu girin (telefon saati otomatik olmalı).');
+  const ins = await run(c.env, 'INSERT OR IGNORE INTO admin (id, email, pass_hash, pass_changed_at, totp_enc, totp_last_step, updated_at) VALUES (1, ?, ?, ?, ?, ?, ?)',
+    p.email, p.pass_hash, c.t, p.totp_enc, step, c.t);
+  if (changes(ins) !== 1) return fail(409, 'Kurulum zaten tamamlanmış. Giriş ekranını kullanın.');
+  const codes = newBackupCodes(10);
+  await run(c.env, 'DELETE FROM backup_codes');
+  for (const code of codes) await run(c.env, 'INSERT INTO backup_codes (code_hash) VALUES (?)', await sha256hex('bc:' + normalizeBackupCode(code)));
+  await run(c.env, 'DELETE FROM setup_pending');
+  await run(c.env, 'DELETE FROM login_attempts WHERE key = ?', 'setup:' + c.cl.ip);
+  await audit(c, 'Kurulum', `Yönetici hesabı web üzerinden oluşturuldu (${p.email})`);
+  return json({ ok: true, codes }, 200, { 'set-cookie': await createSession(c) });
+}
+
 // ---------- Yönlendirme ----------
 const ROUTES = [
   ['POST', /^\/logout$/, logout],
@@ -643,13 +708,19 @@ async function api(c) {
     const origin = req.headers.get('origin');
     if (origin && origin !== url.origin) return fail(403, 'Geçersiz kaynak.');
   }
-  if (!env.DB || !env.FILES || !env.PANEL_ENC_KEY) return fail(503, 'Panel kurulumu tamamlanmadı (DB, FILES veya PANEL_ENC_KEY eksik).');
+  if (!env.DB) return fail(503, 'Panel kurulumu tamamlanmadı (veritabanı bağlı değil).');
+  if (path === '/setup/status' && method === 'GET') return setupStatus(c);
+  if (path === '/setup/start' && method === 'POST') return setupStart(c);
+  if (path === '/setup/finish' && method === 'POST') return setupFinish(c);
   if (path === '/login' && method === 'POST') return login(c);
   if (path === '/verify' && method === 'POST') return verify(c);
   if (!(await getAdmin(env))) return fail(503, 'Yönetici hesabı henüz oluşturulmadı.');
   const session = await getSession(c);
   if (!session) return fail(401, 'Oturum sona erdi. Lütfen yeniden giriş yapın.', { restart: true });
   c.session = session;
+  if (!env.FILES && (/^\/uploads/.test(path) || /^\/versions\//.test(path))) {
+    return fail(503, 'Dosya deposu (R2) henüz etkin değil. Cloudflare panelinde R2 hizmetini bir kez etkinleştirin.');
+  }
   for (const [m, re, fn] of ROUTES) {
     const match = path.match(re);
     if (match && m === method) return fn(c, match);
@@ -712,6 +783,9 @@ export async function handlePanel(request, env) {
   const url = new URL(request.url);
   const cl = clientInfo(request);
   try {
+    // Panel ekranları dışındaki her şey veritabanı ister: tablolar ve anahtarlar burada (gerekirse) otomatik kurulur
+    const staticPage = url.pathname === '/panel' || (url.pathname.startsWith('/panel/') && !url.pathname.startsWith('/panel/api/'));
+    if (!staticPage) env = await prepareEnv(env);
     if (url.pathname.startsWith('/indir/')) return secure(await handleDownload(request, env, url, cl), CSP_DL);
     // Müşteri programlarının lisans API'si (Access dışında, kendi deneme sınırıyla)
     if (url.pathname.startsWith('/lisans/api/')) return secure(await handleLicenseApi(request, env, url, cl), CSP_PANEL);

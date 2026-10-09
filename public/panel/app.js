@@ -456,6 +456,8 @@
       $('#bcInfo').textContent = `${s.backup.total} koddan ${s.backup.left}’i kullanılmadı`;
       $('#trInfo').textContent = s.trustedDevices ? `${s.trustedDevices} cihaz 30 gün boyunca kod istemeden giriş yapabilir` : 'Güvenilir cihaz yok';
       $('#trBtn').disabled = !s.trustedDevices;
+      $('#pkInfo').textContent = s.publicKey || '—';
+      $('#pkBtn').onclick = async () => { try { await navigator.clipboard.writeText(s.publicKey); toast('Açık anahtar kopyalandı.'); } catch { toast('Kopyalanamadı.', true); } };
     } catch (e) { toast(e.message, true); }
     loadAudit();
   }

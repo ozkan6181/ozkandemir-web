@@ -1,0 +1,31 @@
+// ozkandemir.net — Veritabanı şeması (migrations/*.sql ile aynı; tests/test-config.mjs eşitliği denetler)
+// Panel ilk açıldığında bu ifadeler tek işlemde (batch) çalıştırılır; tümü "IF NOT EXISTS" olduğundan tekrar çalışması güvenlidir.
+export const SCHEMA_VERSION = '3';
+export const SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS admin (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  pass_changed_at INTEGER NOT NULL,\n  totp_enc TEXT NOT NULL,\n  totp_last_step INTEGER NOT NULL DEFAULT 0,\n  totp_pending_enc TEXT,\n  updated_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS backup_codes (\n  code_hash TEXT PRIMARY KEY,\n  used_at INTEGER\n)",
+  "CREATE TABLE IF NOT EXISTS challenges (\n  id_hash TEXT PRIMARY KEY,\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  ip TEXT,\n  attempts INTEGER NOT NULL DEFAULT 0\n)",
+  "CREATE TABLE IF NOT EXISTS sessions (\n  id_hash TEXT PRIMARY KEY,\n  created_at INTEGER NOT NULL,\n  last_seen INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  ip TEXT,\n  location TEXT,\n  ua TEXT,\n  revoked INTEGER NOT NULL DEFAULT 0\n)",
+  "CREATE TABLE IF NOT EXISTS trusted_devices (\n  id_hash TEXT PRIMARY KEY,\n  created_at INTEGER NOT NULL,\n  expires_at INTEGER NOT NULL,\n  ua TEXT\n)",
+  "CREATE TABLE IF NOT EXISTS login_attempts (\n  key TEXT PRIMARY KEY,\n  fails INTEGER NOT NULL,\n  first_at INTEGER NOT NULL,\n  locked_until INTEGER NOT NULL DEFAULT 0\n)",
+  "CREATE TABLE IF NOT EXISTS programs (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  slug TEXT NOT NULL UNIQUE,\n  name TEXT NOT NULL,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS versions (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  program_id INTEGER NOT NULL REFERENCES programs(id),\n  version TEXT NOT NULL,\n  filename TEXT NOT NULL,\n  size INTEGER NOT NULL,\n  sha256 TEXT,\n  notes TEXT,\n  r2_key TEXT NOT NULL UNIQUE,\n  upload_id TEXT,\n  status TEXT NOT NULL DEFAULT 'uploading',\n  created_at INTEGER NOT NULL,\n  UNIQUE (program_id, version)\n)",
+  "CREATE TABLE IF NOT EXISTS links (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  token_hash TEXT NOT NULL UNIQUE,\n  version_id INTEGER NOT NULL REFERENCES versions(id),\n  customer TEXT NOT NULL,\n  expires_at INTEGER NOT NULL,\n  max_downloads INTEGER NOT NULL,\n  downloads INTEGER NOT NULL DEFAULT 0,\n  revoked INTEGER NOT NULL DEFAULT 0,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS audit (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  at INTEGER NOT NULL,\n  type TEXT NOT NULL,\n  detail TEXT NOT NULL,\n  ip TEXT,\n  location TEXT,\n  ua TEXT\n)",
+  "CREATE INDEX IF NOT EXISTS idx_audit_at ON audit(at)",
+  "CREATE INDEX IF NOT EXISTS idx_versions_program ON versions(program_id)",
+  "CREATE INDEX IF NOT EXISTS idx_links_version ON links(version_id)",
+  "INSERT OR IGNORE INTO programs (slug, name, created_at) VALUES\n  ('nis-pdks', 'NİS PDKS', unixepoch()),\n  ('banka-xml-aktarim', 'Banka XML Aktarım', unixepoch()),\n  ('satinalma-denetim', 'Satınalma Denetim', unixepoch()),\n  ('cari-mutabakat', 'Cari Mutabakat', unixepoch()),\n  ('yillik-izin', 'Yıllık İzin', unixepoch()),\n  ('cari360', 'Cari360', unixepoch())",
+  "CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit\nBEGIN SELECT RAISE(ABORT, 'Denetim kaydi degistirilemez'); END",
+  "CREATE TRIGGER IF NOT EXISTS audit_no_recent_delete BEFORE DELETE ON audit\nWHEN OLD.at > unixepoch() - 31536000\nBEGIN SELECT RAISE(ABORT, 'Denetim kaydi silinemez'); END",
+  "CREATE TABLE IF NOT EXISTS licenses (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  program_id INTEGER NOT NULL REFERENCES programs(id),\n  key_hash TEXT NOT NULL UNIQUE,        -- SHA-256 (arama için)\n  key_enc TEXT NOT NULL,                -- AES-256-GCM (panelde yeniden göstermek için)\n  key_mask TEXT NOT NULL,               -- NPDK-7K2Q-••••-••••-H8WC\n  customer TEXT NOT NULL,\n  email TEXT,\n  phone TEXT,\n  starts_at INTEGER NOT NULL,\n  ends_at INTEGER NOT NULL,\n  max_devices INTEGER NOT NULL DEFAULT 1,\n  limits_json TEXT NOT NULL DEFAULT '{}',\n  modules_json TEXT NOT NULL DEFAULT '[]',\n  note TEXT,\n  status TEXT NOT NULL DEFAULT 'active',  -- active | suspended | revoked\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS activations (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  license_id INTEGER NOT NULL REFERENCES licenses(id),\n  device_id TEXT NOT NULL,\n  device_name TEXT,\n  os TEXT,\n  app_version TEXT,\n  usage_json TEXT,\n  ip TEXT,\n  location TEXT,\n  activated_at INTEGER NOT NULL,\n  last_seen INTEGER NOT NULL,\n  removed_at INTEGER,\n  UNIQUE (license_id, device_id)\n)",
+  "CREATE TABLE IF NOT EXISTS license_events (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  license_id INTEGER NOT NULL,\n  at INTEGER NOT NULL,\n  type TEXT NOT NULL,\n  detail TEXT NOT NULL,\n  ip TEXT,\n  location TEXT\n)",
+  "CREATE INDEX IF NOT EXISTS idx_licenses_program ON licenses(program_id)",
+  "CREATE INDEX IF NOT EXISTS idx_licenses_ends ON licenses(ends_at)",
+  "CREATE INDEX IF NOT EXISTS idx_activations_license ON activations(license_id)",
+  "CREATE INDEX IF NOT EXISTS idx_license_events ON license_events(license_id, at)",
+  "CREATE INDEX IF NOT EXISTS idx_license_events_at ON license_events(at, type)",
+  "CREATE TABLE IF NOT EXISTS system_keys (\n  name TEXT PRIMARY KEY,\n  value TEXT NOT NULL,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS setup_pending (\n  token_hash TEXT PRIMARY KEY,\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  totp_enc TEXT NOT NULL,\n  expires_at INTEGER NOT NULL\n)"
+];

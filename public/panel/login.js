@@ -17,8 +17,65 @@
   if (params.get('cikis') === '1') msg($('#loginMsg'), 'Oturumunuz kapandı. Güvenliğiniz için yeniden giriş yapın.', 'info');
   history.replaceState(null, '', '/panel/');
 
-  // Zaten açık oturum varsa doğrudan panele geç
-  api('/me').then(() => location.replace('/panel/app')).catch(() => {});
+  // Zaten açık oturum varsa doğrudan panele geç; yönetici hesabı yoksa ilk kurulum sihirbazını göster
+  api('/me').then(() => location.replace('/panel/app')).catch(() => {
+    api('/setup/status').then((st) => { if (st.needsSetup) startSetup(st.setupEnabled); }).catch((e) => {
+      if (e.status === 503) msg($('#loginMsg'), 'Panel ilk kez hazırlanıyor. Birkaç dakika sonra sayfayı yenileyin.', 'info');
+    });
+  });
+
+  // ---------- İlk kurulum ----------
+  let setupToken = null;
+  function startSetup(enabled) {
+    loginForm.hidden = true;
+    otpForm.hidden = true;
+    $('#setupStart').hidden = false;
+    if (!enabled) msg($('#setupMsg'), 'Kurulum kodu tanımlı değil. Lütfen Özkan Demir’e (geliştirici) başvurun.', 'err');
+    $('#setupCode').focus();
+  }
+  $('#setupStart').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg($('#setupMsg'), '');
+    if ($('#setupPw').value !== $('#setupPw2').value) return msg($('#setupMsg'), 'Şifreler aynı değil.');
+    $('#setupBtn').disabled = true;
+    try {
+      const r = await api('/setup/start', { method: 'POST', body: { setupCode: $('#setupCode').value, email: $('#setupEmail').value, password: $('#setupPw').value } });
+      setupToken = r.token;
+      $('#setupQr').replaceChildren(window.ODQR.svg(r.uri, 220));
+      $('#setupSecret').textContent = r.secret;
+      $('#setupOtpLink').href = r.uri;
+      $('#setupStart').hidden = true;
+      $('#setupPhone').hidden = false;
+      $('#setupTotp').focus();
+    } catch (err) {
+      msg($('#setupMsg'), err.message);
+    } finally {
+      $('#setupBtn').disabled = false;
+    }
+  });
+  $('#setupPhone').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    msg($('#setupPhoneMsg'), '');
+    const code = $('#setupTotp').value.replace(/\D/g, '');
+    if (code.length !== 6) return msg($('#setupPhoneMsg'), 'Uygulamadaki 6 haneli kodu girin.');
+    $('#setupPhoneBtn').disabled = true;
+    try {
+      const r = await api('/setup/finish', { method: 'POST', body: { token: setupToken, code } });
+      const text = 'ozkandemir.net panel yedek kodları\n' + new Date().toLocaleString('tr-TR') + '\n\n' + r.codes.join('\n') + '\n\nHer kod bir kez kullanılabilir.';
+      $('#setupCodes').replaceChildren(...r.codes.map((c) => { const el = document.createElement('code'); el.textContent = c; return el; }));
+      $('#setupDownload').href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+      $('#setupCopy').onclick = async () => { try { await navigator.clipboard.writeText(text); $('#setupCopy').textContent = 'Kopyalandı ✓'; } catch {} };
+      $('#setupPhone').hidden = true;
+      $('#setupDone').hidden = false;
+    } catch (err) {
+      if (err.data && err.data.restart) { $('#setupPhone').hidden = true; $('#setupStart').hidden = false; return msg($('#setupMsg'), err.message); }
+      msg($('#setupPhoneMsg'), err.message);
+      $('#setupTotp').select();
+    } finally {
+      $('#setupPhoneBtn').disabled = false;
+    }
+  });
+  $('#setupSaved').addEventListener('change', () => { $('#setupGo').setAttribute('aria-disabled', $('#setupSaved').checked ? 'false' : 'true'); });
 
   function showLogin(text, kind) {
     clearInterval(timer);

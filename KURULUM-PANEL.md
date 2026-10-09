@@ -1,4 +1,21 @@
-# ozkandemir.net V3.6.1 — Yönetim Paneli ve Online Lisans Kurulumu
+# ozkandemir.net V3.7 — Yönetim Paneli ve Online Lisans
+
+## Otomatik kurulum (V3.7) — komut satırı gerekmez
+
+1. GitHub'a gönderilen her sürümü Cloudflare otomatik yayınlar. Panel veritabanı (D1) ilk yayında **Cloudflare tarafından otomatik oluşturulur**.
+2. Panel ilk açıldığında tabloları ve gizli anahtarları **kendisi kurar**.
+3. **https://ozkandemir.net/panel/** adresini açın → "İlk kurulum" ekranı:
+   - Size verilen **kurulum kodunu** girin, e-posta ve şifrenizi belirleyin.
+   - Telefonda **Google Authenticator** ile ekrandaki **karekodu okutun**, 6 haneli kodu yazın.
+   - **10 yedek kodu** kaydedin.
+4. Kurulum bir kez yapılır; sonra bu ekran kalıcı olarak kapanır, giriş ekranı açılır.
+
+Program yükleme için dosya deposu (R2) gerekir; Cloudflare hesabında R2 hizmeti bir kez etkinleştirildiğinde otomatik bağlanır.
+
+Aşağıdaki bölümler, komut satırıyla elle kurulum isteyenler içindir (isteğe bağlı).
+
+---
+
 
 Bu kılavuz, V3.5.8 üzerinde çalışan siteye **şifreli yönetim panelini**, **program yükleme / müşteri indirme bağlantılarını** ve **online lisans yönetimini** ekler. Mevcut sayfalar, BIST kartı, TCMB, haberler, hesaplama araçları ve e-posta seçici **değişmez**.
 
