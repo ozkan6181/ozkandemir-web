@@ -16,10 +16,6 @@
   "d1_databases": [
     { "binding": "DB" }
   ],
-  // Program dosyaları için herkese kapalı R2 deposu (Cloudflare otomatik oluşturur)
-  "r2_buckets": [
-    { "binding": "FILES" }
-  ],
   "vars": {
     // Cloudflare Access (isteğe bağlı ek kapı). Boşsa panel şifre + doğrulama kodu ile korunur.
     "ACCESS_TEAM_DOMAIN": "",
