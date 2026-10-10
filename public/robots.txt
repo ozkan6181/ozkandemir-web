@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /panel
+Disallow: /indir/
+Disallow: /lisans/
+Disallow: /api/
+
+Sitemap: https://www.ozkandemir.net/sitemap.xml
