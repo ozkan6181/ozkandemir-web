@@ -20,8 +20,8 @@ Site, Özkan Demir'in SMMM kimliğini, muhasebe/finans uzmanlığını, dijital 
 - **Meslek:** Serbest Muhasebeci Mali Müşavir (SMMM)
 - **Konum:** Ankara
 - **Telefon / WhatsApp:** 0551 600 77 87
-- **Mevcut e-posta:** `ozkan6181@hotmail.com`
-- **Planlanan kurumsal e-posta:** `info@ozkandemir.net`
+- **Sitedeki e-posta:** `info@ozkandemir.net` (10.10.2026 itibarıyla tüm iletişim ve teklif bağlantıları)
+- **Önceki e-posta:** `ozkan6181@hotmail.com` (panel giriş hesabı olarak kullanılmaya devam ediyor)
 - **Instagram:** `ozkan6181`
 - **Deneyim ifadesi:** `20+ yıllık mesleki deneyim`
 
@@ -469,7 +469,7 @@ Body alanları:
 
 08.10.2026 itibarıyla `info@ozkandemir.net` için Google Workspace düşünülmektedir.
 
-Kurulum tamamlanana kadar mevcut adres `ozkan6181@hotmail.com` kullanılmaktadır.
+10.10.2026 itibarıyla sitedeki tüm iletişim ve teklif e-posta bağlantıları `info@ozkandemir.net` adresine çevrildi.
 
 Workspace kurulursa site içindeki teklif/iletişim e-posta hedeflerinin `info@ozkandemir.net` olarak güncellenmesi önerilir.
 

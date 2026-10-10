@@ -6,7 +6,7 @@ TODAY = "2026-10-10"
 ORG = {"@type": "AccountingService", "@id": SITE + "/#isletme", "name": "Özkan Demir SMMM",
        "alternateName": "Özkan Demir Serbest Muhasebeci Mali Müşavir", "url": SITE + "/",
        "image": SITE + "/assets/ozkan-demir-hero.jpg", "telephone": "+90 551 600 77 87",
-       "email": "ozkan6181@hotmail.com", "areaServed": "TR",
+       "email": "info@ozkandemir.net", "areaServed": "TR",
        "address": {"@type": "PostalAddress", "addressLocality": "Ankara", "addressCountry": "TR"},
        "founder": {"@id": SITE + "/#ozkan-demir"}}
 PERSON = {"@type": "Person", "@id": SITE + "/#ozkan-demir", "name": "Özkan Demir",
@@ -126,6 +126,13 @@ for page, (title, desc, og, _) in PAGES.items():
         name = re.search(r"<h1>([^<]*)</h1>", h).group(1)
         objs = [crumbs([("Ana Sayfa", "/"), (name, "/" + page)])]
     files[page] = apply_head(h, page, title, desc, og, objs)
+
+# mailto / WhatsApp bağlantılarında kodlanmamış karakter kalmasın
+def fix_href(m):
+    u = m.group(2)
+    return m.group(1) + up.quote(u, safe=":/?&=%#@+,;~-._!*'()") + '"'
+for name in files:
+    files[name] = re.sub(r'(href=")((?:mailto:|https://wa\.me/)[^"]*)"', fix_href, files[name])
 
 for name, h in files.items():
     (ROOT / name).write_text(h, encoding="utf-8")
