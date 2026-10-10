@@ -1,0 +1,207 @@
+{
+  "sema": "nis-pdks-bordro-parametreleri/1",
+  "yil": 2026,
+  "surum": "2026.20261002",
+  "guncelleme_tarihi": "2026-10-10",
+  "dogrulama_tarihi": "2026-10-02",
+  "yayinlayan": "Özkan Demir SMMM — ozkandemir.net",
+  "uyari": "Mevzuat değişebilir. Bordro kesinleştirilmeden önce resmi kaynaklarla kontrol edilmelidir.",
+  "para_birimi": "TRY",
+  "asgari_ucret": {
+    "aylik_brut": 33030,
+    "aylik_net": 28075.5,
+    "gunluk_brut": 1101,
+    "saatlik_brut": 146.8
+  },
+  "sgk": {
+    "taban_aylik": 33030,
+    "tavan_aylik": 297270,
+    "taban_gunluk": 1101,
+    "tavan_gunluk": 9909,
+    "isci_prim_orani": 0.14,
+    "isci_issizlik_orani": 0.01,
+    "isveren_prim_orani": {
+      "indirimsiz": 0.2175,
+      "indirimli_genel": 0.1975,
+      "indirimli_imalat": 0.1675
+    },
+    "isveren_issizlik_orani": 0.02
+  },
+  "gelir_vergisi": {
+    "ucret_tarifesi": [
+      {
+        "ust_sinir": 190000,
+        "oran": 0.15
+      },
+      {
+        "ust_sinir": 400000,
+        "oran": 0.2
+      },
+      {
+        "ust_sinir": 1500000,
+        "oran": 0.27
+      },
+      {
+        "ust_sinir": 5300000,
+        "oran": 0.35
+      },
+      {
+        "ust_sinir": null,
+        "oran": 0.4
+      }
+    ],
+    "asgari_ucret_istisnasi": {
+      "aciklama": "Asgari ücrete isabet eden gelir vergisi istisnası; kümülatif matrah nedeniyle aya göre değişir.",
+      "aylik": [
+        {
+          "ay": 1,
+          "ad": "Ocak",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 28075.5,
+          "istisna_tutari": 4211.33
+        },
+        {
+          "ay": 2,
+          "ad": "Şubat",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 56151,
+          "istisna_tutari": 4211.33
+        },
+        {
+          "ay": 3,
+          "ad": "Mart",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 84226.5,
+          "istisna_tutari": 4211.33
+        },
+        {
+          "ay": 4,
+          "ad": "Nisan",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 112302,
+          "istisna_tutari": 4211.33
+        },
+        {
+          "ay": 5,
+          "ad": "Mayıs",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 140377.5,
+          "istisna_tutari": 4211.33
+        },
+        {
+          "ay": 6,
+          "ad": "Haziran",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 168453,
+          "istisna_tutari": 4211.33
+        },
+        {
+          "ay": 7,
+          "ad": "Temmuz",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 196528.5,
+          "istisna_tutari": 4537.75
+        },
+        {
+          "ay": 8,
+          "ad": "Ağustos",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 224604,
+          "istisna_tutari": 5615.1
+        },
+        {
+          "ay": 9,
+          "ad": "Eylül",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 252679.5,
+          "istisna_tutari": 5615.1
+        },
+        {
+          "ay": 10,
+          "ad": "Ekim",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 280755,
+          "istisna_tutari": 5615.1
+        },
+        {
+          "ay": 11,
+          "ad": "Kasım",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 308830.5,
+          "istisna_tutari": 5615.1
+        },
+        {
+          "ay": 12,
+          "ad": "Aralık",
+          "matrah": 28075.5,
+          "kumulatif_matrah": 336906,
+          "istisna_tutari": 5615.1
+        }
+      ]
+    },
+    "engellilik_indirimi_aylik": {
+      "derece_1": 12000,
+      "derece_2": 7000,
+      "derece_3": 3000
+    }
+  },
+  "damga_vergisi": {
+    "oran": 0.00759,
+    "asgari_ucret_istisnasi_aylik": 250.7
+  },
+  "istisnalar": {
+    "yemek": {
+      "gelir_vergisi_gunluk": 300,
+      "yemek_karti_kdv_dahil_gunluk": 330,
+      "sgk_gunluk": [
+        {
+          "baslangic": "2026-01-01",
+          "bitis": "2026-04-16",
+          "yontem": "gunluk_brut_asgari_ucret_orani",
+          "oran": 0.2365,
+          "tutar": 260.39
+        },
+        {
+          "baslangic": "2026-04-17",
+          "bitis": null,
+          "yontem": "sabit",
+          "tutar": 300
+        }
+      ],
+      "aciklama": "Fiilen çalışılan gün başına. SGK tutarı 2026/12 sayılı SGK Genelgesi ile 17.04.2026 itibarıyla günlük 300 TL."
+    },
+    "yol": {
+      "gelir_vergisi_gunluk": 158,
+      "aciklama": "Toplu taşıma bileti/kartı veya bu amaçla ödenen bedel; fiilen çalışılan gün başına."
+    }
+  },
+  "kidem_tazminati_tavani": [
+    {
+      "baslangic": "2026-01-01",
+      "bitis": "2026-06-30",
+      "tutar": 64948.77
+    },
+    {
+      "baslangic": "2026-07-01",
+      "bitis": "2026-12-31",
+      "tutar": 73729.87
+    }
+  ],
+  "calisma_suresi": {
+    "haftalik_saat": 45,
+    "gunluk_saat": 7.5,
+    "aylik_saat": 225,
+    "aylik_gun": 30,
+    "fazla_calisma_carpani": 1.5,
+    "fazla_surelerle_calisma_carpani": 1.25,
+    "genel_tatil_calisma_carpani": 2,
+    "yillik_fazla_calisma_ust_siniri_saat": 270,
+    "aciklama": "4857 sayılı İş Kanunu md. 41, 47, 63. Genel tatil çarpanı, çalışılan gün için toplam ödemeyi (1 + 1 günlük ek) ifade eder."
+  },
+  "kaynaklar": [
+    "Asgari ücret, SGK taban/tavan ve prim oranları: SGK ve Çalışma ve Sosyal Güvenlik Bakanlığı duyuruları",
+    "Gelir vergisi tarifesi, yemek/yol istisnası ve engellilik indirimi: 31.12.2025 tarihli Resmî Gazete (5. mükerrer) ile yayımlanan Gelir Vergisi Genel Tebliğleri",
+    "SGK yemek bedeli istisnası: 2026/12 sayılı SGK Genelgesi",
+    "Kıdem tazminatı tavanı: Hazine ve Maliye Bakanlığı memur maaş katsayısı genelgeleri"
+  ]
+}
