@@ -18,7 +18,7 @@ BRAND = {"@type": "Brand", "name": "NİS"}
 PRODUCTS = [
     ("Personel Devam Takip", "NİS PDKS", "Personel Devam Kontrol Sistemi", "yazilim-personel.html", "nis-pdks", "personel", "Web, Android, iOS",
      "NİS PDKS: telefondan giriş-çıkış, mesai planı, izin ve rapor talepleri, anlık bildirim ve puantaj tek ekranda."),
-    ("Cari Mutabakat", "NİS Cari Mutabakat", "Dijital Cari Mutabakat Sistemi", "yazilim-cari-mutabakat.html", None, None, "Web, Windows",
+    ("Cari Mutabakat", "NİS Cari Mutabakat", "Cari Hesap Mutabakat Sistemi", "yazilim-cari-mutabakat.html", "nis-cari-mutabakat", None, "Web, Windows",
      "NİS Cari Mutabakat: Logo ERP bakiyelerinden uçtan uca dijital cari mutabakat akışı."),
     ("Banka Ekstre → Logo", "NİS Banka XML", "Logo Uyumlu Banka Aktarım Sistemi", "yazilim-banka-logo.html", "nis-banka-xml", "banka-xml", "Web, Windows",
      "NİS Banka XML: banka ekstrelerini Logo uyumlu XML'e çevirir; otomatik sınıflandırma, cari ve muhasebe kodu kontrolü, mükerrer kayıt engeli."),
