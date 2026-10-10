@@ -250,3 +250,48 @@ textarea.mono{font-family:ui-monospace,Consolas,monospace;font-size:12px}
 .qr-alt{display:flex;flex-direction:column;gap:8px}
 .qr-alt[open]{gap:8px}
 a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
+/* V3.8 — bordro parametreleri, yenileme takibi, güncelleme yayını, Cloudflare kurulumu */
+.nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--gold2);color:#08263f;font-size:11px;font-weight:800;display:inline-grid;place-items:center}
+.small{font-size:13px}
+.renew{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #edf2f7;flex-wrap:wrap}
+.renew:first-child{border-top:0}
+.renew>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.renew small{color:var(--muted);font-size:12px}
+.renew .btn-row{flex-wrap:wrap}
+.prm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.prm-sec{display:flex;flex-direction:column;gap:12px;border-top:1px solid #edf2f7;padding-top:14px}
+.prm-sec:first-child{border-top:0;padding-top:0}
+.prm-sec h3{margin:0;font-size:15px}
+.prm-sec .hint{font-size:12px;color:var(--muted);margin:-6px 0 0}
+.unit{position:relative;display:block}
+.unit .input{padding-right:46px;width:100%}
+.unit i{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-style:normal;font-size:12px;color:var(--muted);pointer-events:none}
+.ptbl{width:100%;border-collapse:collapse}
+.ptbl th{font-size:12px;color:var(--muted);text-align:left;font-weight:600;padding:0 6px 6px 0}
+.ptbl td{padding:0 6px 6px 0;vertical-align:middle}
+.ptbl .input,.ptbl .select{width:100%;min-width:0}
+.ptbl td.x{width:36px}
+.dlist{display:flex;flex-direction:column;gap:8px;margin:0}
+.dlist div{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-bottom:1px dashed #e4ecf4;padding-bottom:6px}
+.dlist dt{color:var(--muted)}
+.dlist dd{margin:0;font-weight:700;text-align:right}
+.months{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;font-size:12px}
+.months span{display:flex;justify-content:space-between;background:#f4f8fb;border-radius:6px;padding:3px 7px}
+.alert-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.alert-item{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;border:1px solid #f0e2b8;background:#fffaf0;border-radius:10px;padding:10px 12px}
+.alert-item a{font-weight:700;color:#08263f;overflow-wrap:anywhere}
+.alert-item small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.alert-item.done{border-color:#e4ecf4;background:#fafcfe;opacity:.75}
+.change-list{margin:6px 0 0;padding-left:18px;font-size:13px}
+.cf-box{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border:1px dashed #c9d8e6;border-radius:10px;flex-wrap:wrap}
+.cf-box div{display:flex;flex-direction:column;gap:2px}
+.cf-box small{color:var(--muted);font-size:12px}
+.perm{margin:4px 0 0;padding-left:18px;font-size:13px}
+.perm code{font-size:12px;background:#f1f5f9;border-radius:4px;padding:1px 5px}
+@media(max-width:700px){.months{grid-template-columns:repeat(2,1fr)}}
+.ptbl-wrap{overflow-x:auto;margin:0 -2px;padding:0 2px}
+.ptbl-4{min-width:520px;table-layout:fixed}
+.ptbl-4 th:nth-child(1),.ptbl-4 th:nth-child(2){width:128px}
+.ptbl-4 th:nth-child(3){width:150px}
+.ptbl-4 th:nth-child(5){width:44px}
+.setting>div{min-width:0}.setting small.mono{overflow-wrap:anywhere;word-break:break-all}.setting .btn{flex-shrink:0}

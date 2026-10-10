@@ -17,6 +17,7 @@
     <nav class="side-nav" aria-label="Panel menüsü">
       <a href="#programlar" data-nav="programlar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8l-9-5-9 5v8l9 5z"></path><path d="M3.3 7L12 12l8.7-5M12 22V12"></path></svg>Programlar</a>
       <a href="#lisanslar" data-nav="lisanslar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M10.8 12.2L20 3M16 7l3 3M18 5l2 2"></path></svg>Lisanslar</a>
+      <a href="#parametreler" data-nav="parametreler"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18H5z"></path><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"></path></svg>Bordro parametreleri<span class="nav-badge" id="paramBadge" hidden></span></a>
       <a href="#yukle" data-nav="yukle"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Yeni yükleme</a>
       <a href="#linkler" data-nav="linkler"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path></svg>İndirme bağlantıları</a>
       <a href="#guvenlik" data-nav="guvenlik"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>Güvenlik ve kayıtlar</a>
@@ -44,6 +45,14 @@
 
       <div class="stats" id="stats"></div>
 
+      <section class="card" id="renewCard" hidden>
+        <div class="card-head">
+          <div><h2>Yenileme takibi</h2><p class="muted small" id="renewSub">Süresi 60 gün içinde dolacak ve son 30 günde dolmuş lisanslar.</p></div>
+          <div class="chips" id="renewChips"></div>
+        </div>
+        <div id="renewList"></div>
+      </section>
+
       <section class="card">
         <div class="card-head">
           <h2>Yüklü programlar</h2>
@@ -51,7 +60,7 @@
         </div>
         <div class="table-wrap">
           <table class="tbl wide">
-            <thead><tr><th>Program</th><th>Son sürüm</th><th>Boyut</th><th>Güncelleme</th><th>Erişim</th><th class="r">İşlem</th></tr></thead>
+            <thead><tr><th>Program</th><th>Son sürüm</th><th>Boyut</th><th>Tarih</th><th>Müşteri güncellemesi</th><th>Erişim</th><th class="r">İşlem</th></tr></thead>
             <tbody id="progRows"></tbody>
           </table>
         </div>
@@ -215,6 +224,29 @@
       <div id="licDetailView" class="view" hidden></div>
     </section>
 
+    <!-- BORDRO PARAMETRELERİ -->
+    <section class="view" id="view-parametreler" hidden>
+      <header class="page-head">
+        <div>
+          <span class="kicker">BORDRO PARAMETRELERİ</span>
+          <h1>Bordro parametreleri</h1>
+          <p>NİS PDKS'nin okuduğu dosya ve sitedeki hesaplama araçları buradan beslenir. Değer girin, önizleyin, kodla yayınlayın.</p>
+        </div>
+        <div class="btn-row"><a class="btn btn-sm" id="prmFile" target="_blank" rel="noopener">Yayındaki dosyayı aç</a></div>
+      </header>
+      <section class="card" id="prmWatch"></section>
+      <div class="row2 top">
+        <section class="card grow2">
+          <div class="card-head"><h2>Temel değerler</h2><span id="prmSource"></span></div>
+          <form id="prmForm" class="modal-body" novalidate></form>
+        </section>
+        <aside class="side-col">
+          <section class="card" id="prmDerived"></section>
+          <section class="card" id="prmHistory"></section>
+        </aside>
+      </div>
+    </section>
+
     <!-- GÜVENLİK -->
     <section class="view" id="view-guvenlik" hidden>
       <header class="page-head">
@@ -226,6 +258,10 @@
       <section class="card">
         <div class="sec-head" id="secHead"></div>
         <div class="layers" id="layers"></div>
+        <div class="cf-box" id="cfBox" hidden>
+          <div><b>Kalan katmanları tamamla</b><small id="cfText">Cloudflare API anahtarıyla, buradan tek seferde.</small></div>
+          <button type="button" class="btn btn-sm btn-navy" id="cfBtn">Cloudflare ile tamamla</button>
+        </div>
       </section>
       <div class="row2">
         <section class="card">
@@ -274,5 +310,6 @@
 <script src="/panel/sha256.js"></script>
 <script src="/panel/app.js"></script>
 <script src="/panel/lisans.js"></script>
+<script src="/panel/parametre.js"></script>
 </body>
 </html>

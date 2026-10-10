@@ -20,6 +20,14 @@ Hızlı kullanım:
     durum = lic.state()          # açılışta
     if not durum.ok:
         ... lisans ekranını göster; lic.activate(anahtar) ...
+
+Güncelleme (V1.1):
+    yeni = lic.check_update()    # yayında yeni sürüm yoksa None
+    if yeni and yonetici_onayladi:
+        dosya = lic.download_update(yeni)   # SHA-256 doğrulanmış kurulum dosyası
+        ... kurulumu başlat ...
+  Güncelleme bildirimi ozkandemir.net tarafından imzalıdır; dosyanın parmak izi bildirimle
+  karşılaştırılır, tutmazsa dosya silinir. Kurulum her zaman müşterinin yöneticisinin onayıyla yapılır.
 """
 from __future__ import annotations
 
@@ -40,7 +48,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, List, Optional
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 DEFAULT_SERVER = "https://ozkandemir.net"
 PRODUCTS = {
@@ -148,8 +156,8 @@ def _b64url_encode(b: bytes) -> str:
     return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
 
 
-def verify_token(public_key_x: str, token: str) -> Optional[dict]:
-    """İmzalı lisans belgesini doğrular; geçerliyse içeriğini, değilse None döndürür."""
+def verify_token(public_key_x: str, token: str, typ: str = "od-license") -> Optional[dict]:
+    """İmzalı belgeyi doğrular; imza ve belge türü (typ) uygunsa içeriğini, değilse None döndürür."""
     try:
         tag, body, sig = str(token).strip().split(".")
         if tag != "ODL1":
@@ -157,7 +165,7 @@ def verify_token(public_key_x: str, token: str) -> Optional[dict]:
         if not ed25519_verify(_b64url_decode(public_key_x), body.encode("ascii"), _b64url_decode(sig)):
             return None
         payload = json.loads(_b64url_decode(body).decode("utf-8"))
-        return payload if payload.get("typ") == "od-license" else None
+        return payload if payload.get("typ") == typ else None
     except Exception:
         return None
 
@@ -259,6 +267,26 @@ MESSAGES = {
     "restored": "Eski bir lisans dosyası geri yüklenmiş görünüyor. Programı internete bağlayıp lisansı doğrulayın.",
     "not_started": "Lisans henüz başlamadı.",
 }
+
+
+@dataclass
+class UpdateInfo:
+    """Yayındaki yeni sürümün imzası doğrulanmış bilgileri."""
+    version: str
+    current: str
+    filename: str
+    size: int
+    sha256: str
+    mandatory: bool
+    notes: str
+    published: int
+    download_url: str
+    expires: int
+
+    def to_dict(self) -> dict:
+        return {"version": self.version, "current": self.current, "filename": self.filename, "size": self.size,
+                "sha256": self.sha256, "mandatory": self.mandatory, "notes": self.notes,
+                "published": _fmt_date(self.published) if self.published else ""}
 
 
 class LicenseError(Exception):
@@ -479,6 +507,80 @@ class LicenseClient:
         self._cached = None
         return self.state(online=False)
 
+    # ----- güncelleme -----
+    def check_update(self) -> Optional[UpdateInfo]:
+        """Yayında daha yeni bir sürüm varsa imzası doğrulanmış bilgisini, yoksa None döndürür."""
+        data = self._load()
+        if not data.get("key"):
+            raise LicenseError("Güncelleme için önce lisansı etkinleştirin.", "no_license")
+        resp = self._post("/lisans/api/update-check", self._body(data["key"]))
+        if not resp.get("ok"):
+            raise LicenseError(resp.get("message") or "Güncelleme denetlenemedi.", resp.get("code", "error"))
+        if not resp.get("update"):
+            return None
+        m = verify_token(self.public_key, resp.get("manifest", ""), typ="od-update")
+        if (not m or m.get("typ") != "od-update" or m.get("device") != self.device_id
+                or m.get("product") != self.product or not m.get("sha256") or not m.get("download")):
+            raise LicenseError("Güncelleme bildirimi doğrulanamadı.", "invalid")
+        url = m["download"] if m["download"].startswith("https://") else self.server + m["download"]
+        return UpdateInfo(version=str(m.get("version", "")), current=str(m.get("current", "")),
+                          filename=os.path.basename(str(m.get("filename") or "guncelleme.zip")),
+                          size=int(m.get("size", 0)), sha256=str(m["sha256"]).lower(),
+                          mandatory=bool(m.get("mandatory")), notes=str(m.get("notes") or ""),
+                          published=int(m.get("published", 0)), download_url=url, expires=int(m.get("exp", 0)))
+
+    def download_update(self, info: UpdateInfo, target_dir: Optional[str] = None,
+                        progress: Optional[Callable[[int, int], None]] = None) -> str:
+        """Güncelleme dosyasını indirir (kesilirse kaldığı yerden devam eder) ve SHA-256 ile doğrular.
+        Doğrulanmış dosyanın yolunu döndürür; parmak izi tutmazsa dosyayı siler ve LicenseError fırlatır."""
+        if info.expires and time.time() > info.expires:
+            raise LicenseError("İndirme izninin süresi doldu; güncellemeyi yeniden denetleyin.", "expired")
+        target_dir = target_dir or os.path.join(self.data_dir, "guncellemeler")
+        os.makedirs(target_dir, exist_ok=True)
+        final = os.path.join(target_dir, info.filename)
+        part = final + ".part"
+        h = hashlib.sha256()
+        done = 0
+        if os.path.exists(part):
+            with open(part, "rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    h.update(chunk)
+                    done += len(chunk)
+        headers = {"user-agent": f"odlisans/{__version__} ({self.product} {self.app_version})"}
+        if done:
+            headers["range"] = f"bytes={done}-"
+        req = urllib.request.Request(info.download_url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=max(self.timeout, 60), context=ssl.create_default_context()) as r:
+                if done and r.status != 206:  # sunucu kaldığı yerden vermediyse baştan indir
+                    h, done = hashlib.sha256(), 0
+                    mode = "wb"
+                else:
+                    mode = "ab" if done else "wb"
+                with open(part, mode) as f:
+                    for chunk in iter(lambda: r.read(1024 * 1024), b""):
+                        f.write(chunk)
+                        h.update(chunk)
+                        done += len(chunk)
+                        if progress:
+                            progress(done, info.size)
+        except urllib.error.HTTPError as e:
+            try:
+                msg = json.loads(e.read().decode("utf-8")).get("message")
+            except Exception:
+                msg = None
+            raise LicenseError(msg or f"Güncelleme indirilemedi ({e.code}).", "download")
+        except (urllib.error.URLError, OSError) as e:
+            raise LicenseError("Güncelleme indirilemedi. İnternet bağlantısını kontrol edin; tekrar denendiğinde kaldığı yerden devam eder.", "network") from e
+        if h.hexdigest() != info.sha256:
+            try:
+                os.remove(part)
+            except OSError:
+                pass
+            raise LicenseError("İndirilen dosyanın parmak izi tutmadı; dosya silindi. Lütfen tekrar deneyin.", "checksum")
+        os.replace(part, final)
+        return final
+
     def remove_local(self) -> None:
         """Yerel lisans dosyasını siler (ikinci kayıt korunur; eski dosya geri yüklenemez)."""
         try:
@@ -541,6 +643,8 @@ def _main(argv=None) -> int:
     r = sub.add_parser("request-code"); r.add_argument("key")
     i = sub.add_parser("install"); i.add_argument("token")
     sub.add_parser("device")
+    sub.add_parser("update-check")
+    u = sub.add_parser("update-download"); u.add_argument("--dir")
     args = ap.parse_args(argv)
     c = LicenseClient(args.product, args.public_key, args.app_version, data_dir=args.data_dir, server=args.server)
     try:
@@ -552,6 +656,14 @@ def _main(argv=None) -> int:
             print(c.offline_request_code(args.key)); return 0
         elif args.cmd == "install":
             st = c.install_offline_token(args.token)
+        elif args.cmd in ("update-check", "update-download"):
+            info = c.check_update()
+            if not info:
+                print(json.dumps({"ok": True, "update": False, "message": "Program güncel."}, ensure_ascii=False, indent=1)); return 0
+            out = {"ok": True, "update": True, **info.to_dict()}
+            if args.cmd == "update-download":
+                out["file"] = c.download_update(info, args.dir)
+            print(json.dumps(out, ensure_ascii=False, indent=1)); return 0
         elif args.cmd == "device":
             print(json.dumps({"device_id": c.device_id, "device_name": c.device_name, "data": c.path}, ensure_ascii=False, indent=1)); return 0
         else:

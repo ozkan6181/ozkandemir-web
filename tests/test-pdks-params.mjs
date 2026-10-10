@@ -17,4 +17,10 @@ assert.equal(ay[0].istisna_tutari, 4211.33);
 assert.equal(Math.round((P.minGross * 0.85) * 100) / 100, d.asgari_ucret.aylik_net);
 assert.equal(d.damga_vergisi.asgari_ucret_istisnasi_aylik, 250.7);
 assert.equal(d.kidem_tazminati_tavani.at(-1).tutar, P.severanceCeiling);
+// Mali takvim abonelik dosyası params-2026.js ile güncel olmalı (node scripts/takvim-ics.mjs)
+const { buildIcs } = await import('../scripts/takvim-ics.mjs');
+const ics = fs.readFileSync(new URL('../public/mali-takvim.ics', import.meta.url), 'utf8');
+assert.equal(ics, buildIcs(P), 'mali-takvim.ics güncel değil: node scripts/takvim-ics.mjs');
+assert.equal((ics.match(/BEGIN:VEVENT/g) || []).length, P.deadlines.length);
+assert.ok(ics.split('\r\n').every((l) => Buffer.byteLength(l) <= 75), 'satır uzunluğu en fazla 75 bayt');
 console.log('pdks params tests: OK');

@@ -38,7 +38,7 @@ export const PRODUCTS = {
     modules: [{ key: 'hizli_entegrasyon', label: 'Hızlı Bilişim entegrasyonu', def: true }],
   },
 };
-const BY_PREFIX = Object.fromEntries(Object.entries(PRODUCTS).map(([slug, p]) => [p.prefix, { slug, ...p }]));
+export const BY_PREFIX = Object.fromEntries(Object.entries(PRODUCTS).map(([slug, p]) => [p.prefix, { slug, ...p }]));
 
 export const LIC = {
   CHECK_EVERY: 7 * 86400,   // program 7 günde bir doğrular
@@ -70,7 +70,7 @@ export function normalizeKey(input) {
   return `${prefix}-${body.slice(0, 4)}-${body.slice(4, 8)}-${body.slice(8, 12)}-${body.slice(12)}`;
 }
 export const maskKey = (k) => `${k.slice(0, 9)}-••••-••••-${k.slice(-4)}`;
-const keyHash = (k) => sha256hex('lk:' + k);
+export const keyHash = (k) => sha256hex('lk:' + k);
 
 // ---------- Tarih ----------
 function parseDateTR(s, endOfDay) {
@@ -129,7 +129,7 @@ export async function verifyToken(publicX, token) {
 }
 
 // ---------- Durum ----------
-function licState(lic, t) {
+export function licState(lic, t) {
   if (lic.status === 'revoked') return 'revoked';
   if (lic.status === 'suspended') return 'suspended';
   if (lic.ends_at < t) return 'expired';
@@ -175,13 +175,13 @@ async function buildToken(env, lic, prefix, deviceId, state, t, offline = false)
   });
 }
 
-async function event(env, licenseId, type, detail, cl) {
+export async function event(env, licenseId, type, detail, cl) {
   await run(env, 'INSERT INTO license_events (license_id, at, type, detail, ip, location) VALUES (?, ?, ?, ?, ?, ?)',
     licenseId, now(), type, String(detail).slice(0, 500), cl ? cl.ip : null, cl ? cl.location : null);
 }
 
 // ---------- Müşteri programı API'si ----------
-function cleanBody(b) {
+export function cleanBody(b) {
   const deviceId = String(b.device_id || '').toLowerCase();
   if (!/^[a-f0-9]{32,128}$/.test(deviceId)) throw new HttpError(400, 'Cihaz kimliği geçersiz.');
   let usage = b.usage && typeof b.usage === 'object' && !Array.isArray(b.usage) ? b.usage : {};
@@ -197,12 +197,12 @@ function cleanBody(b) {
   };
 }
 
-async function licLocked(env, ip, t) {
+export async function licLocked(env, ip, t) {
   const r = await first(env, 'SELECT locked_until FROM login_attempts WHERE key = ?', 'lic:' + ip);
   return r && r.locked_until > t ? r.locked_until : 0;
 }
 // Geçersiz anahtar denemesini atomik say; sınır aşılırsa IP 1 saat kilitlenir
-async function licFail(env, ip, t) {
+export async function licFail(env, ip, t) {
   await chargeAttempt(env, 'lic:' + ip, t, LIC.FAIL_MAX - 1, LIC.FAIL_WINDOW, LIC.FAIL_LOCK);
 }
 

@@ -4,6 +4,7 @@
 //   tanımlı değilse bir kez üretilip veritabanında saklanır (system_keys).
 import { SCHEMA, SCHEMA_VERSION } from './schema.js';
 import { b64, randomBytes } from './security.js';
+import { HttpError } from './common.js';
 
 const cache = new WeakMap(); // aynı Worker örneğinde (aynı veritabanı için) tekrar kontrol etmemek için
 
@@ -35,6 +36,18 @@ async function newSigningKey() {
   return JSON.stringify({ kty: 'OKP', crv: 'Ed25519', d: jwk.d, x: jwk.x });
 }
 
+async function dropMovedKeys(env) {
+  const rows = (await env.DB.prepare("SELECT name, value FROM system_keys WHERE name IN ('panel_enc_key', 'license_signing_key')").all()).results || [];
+  const same = { panel_enc_key: env.PANEL_ENC_KEY, license_signing_key: env.LICENSE_SIGNING_KEY };
+  for (const r of rows) {
+    if (r.value !== same[r.name]) continue; // farklı bir anahtar: dokunma
+    await env.DB.prepare("INSERT OR IGNORE INTO system_keys (name, value, created_at) VALUES ('keys_moved', '1', unixepoch())").run();
+    await env.DB.prepare('DELETE FROM system_keys WHERE name = ? AND value = ?').bind(r.name, r.value).run();
+    await env.DB.prepare('INSERT INTO audit (at, type, detail) VALUES (unixepoch(), ?, ?)')
+      .bind('Güvenlik', `${r.name === 'panel_enc_key' ? 'Şifreleme' : 'Lisans imza'} anahtarı Cloudflare gizli değişkenine taşındı; veritabanı kopyası silindi`).run();
+  }
+}
+
 // env'i bozmadan, eksik anahtarları tamamlanmış bir görünüm döndürür
 export async function prepareEnv(env) {
   if (!env || !env.DB) return env;
@@ -42,6 +55,12 @@ export async function prepareEnv(env) {
   if (!ready) {
     ready = (async () => {
       await ensureSchema(env.DB);
+      // Anahtarlar Cloudflare gizli değişkenine taşındıysa ve değerler aynıysa veritabanındaki kopyalar silinir
+      if (env.PANEL_ENC_KEY && env.LICENSE_SIGNING_KEY) await dropMovedKeys(env);
+      else if (await env.DB.prepare("SELECT 1 AS x FROM system_keys WHERE name = 'keys_moved'").first()) {
+        // Anahtarlar gizli değişkene taşınmıştı ama artık yok: yeni anahtar üretmek tüm lisansları ve paneli bozar
+        throw new HttpError(503, 'Gizli anahtarlar (PANEL_ENC_KEY / LICENSE_SIGNING_KEY) bulunamadı. Cloudflare Worker ayarlarındaki gizli değişkenleri kurtarma yedeğinden geri yükleyin.');
+      }
       const panelKey = env.PANEL_ENC_KEY || (await storedKey(env.DB, 'panel_enc_key', async () => b64(randomBytes(32))));
       const signKey = env.LICENSE_SIGNING_KEY || (await storedKey(env.DB, 'license_signing_key', newSigningKey));
       return {

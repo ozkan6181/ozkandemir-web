@@ -15,7 +15,11 @@ import {
   suspendLicense, resumeLicense, revokeLicense, removeDevice, offlineActivate,
 } from './license.js';
 import { prepareEnv } from './bootstrap.js';
-import { signingPublicKey } from './license.js';
+import { signingPublicKey, isoDateTR, dateTR, LIC } from './license.js';
+import { handleUpdateApi, publishRelease, unpublishRelease, releaseSummary } from './guncelleme.js';
+import { getPayroll, previewPayroll, publishPayroll, restorePayroll, dismissAlert, isPayrollPublicPath, servePayrollPublic } from './parametre.js';
+import { runWatch } from './watch.js';
+import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfsetup.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -267,6 +271,8 @@ async function overview(c) {
       activeLinks: activeBy[p.id] ? activeBy[p.id].n : 0,
     };
   }).sort((a, b) => ((b.latest && b.latest.at) || 0) - ((a.latest && a.latest.at) || 0) || a.id - b.id);
+  const rel = await releaseSummary(env, t);
+  for (const p of list) p.release = rel[p.id] || null;
   const storage = versions.reduce((s, v) => s + Number(v.size || 0), 0);
   const totalActive = active.reduce((s, a) => s + a.n, 0);
   const next = active.reduce((m, a) => (m && m < a.next ? m : a.next), 0);
@@ -302,11 +308,11 @@ async function listVersions(c, [, pid]) {
   const p = await first(c.env, 'SELECT id, name FROM programs WHERE id = ?', Number(pid));
   if (!p) return fail(404, 'Program bulunamadı.');
   const rows = await all(c.env,
-    "SELECT v.id, v.version, v.filename, v.size, v.sha256, v.notes, v.created_at, (SELECT COUNT(*) FROM links l WHERE l.version_id = v.id AND l.revoked = 0 AND l.expires_at > ? AND l.downloads < l.max_downloads) AS active FROM versions v WHERE v.program_id = ? AND v.status = 'ready' ORDER BY v.created_at DESC, v.id DESC",
+    "SELECT v.id, v.version, v.filename, v.size, v.sha256, v.notes, v.created_at, (SELECT COUNT(*) FROM links l WHERE l.version_id = v.id AND l.revoked = 0 AND l.expires_at > ? AND l.downloads < l.max_downloads) AS active, r.published_at AS released_at, r.mandatory, r.public_notes FROM versions v LEFT JOIN releases r ON r.version_id = v.id WHERE v.program_id = ? AND v.status = 'ready' ORDER BY v.created_at DESC, v.id DESC",
     c.t, p.id);
   return json({
     program: p,
-    versions: rows.map((v) => ({ ...v, sizeText: fmtSize(v.size), date: fmtTR(v.created_at) })),
+    versions: rows.map((v) => ({ ...v, sizeText: fmtSize(v.size), date: fmtTR(v.created_at), released: v.released_at ? fmtTR(v.released_at) : null, mandatory: Boolean(v.mandatory) })),
   });
 }
 
@@ -319,6 +325,7 @@ async function deleteVersion(c, [, vid]) {
     await c.env.FILES.delete(v.r2_key);
   }
   await run(c.env, 'DELETE FROM links WHERE version_id = ?', v.id);
+  await run(c.env, 'DELETE FROM releases WHERE version_id = ?', v.id);
   await run(c.env, 'DELETE FROM versions WHERE id = ?', v.id);
   await audit(c, 'Silme', `${v.program} ${v.version} silindi (bağlı indirme linkleri iptal edildi)`);
   return json({ ok: true });
@@ -455,10 +462,13 @@ async function security(c) {
     c.t, c.t - CFG.SESSION_IDLE);
   const backup = await first(env, 'SELECT COUNT(*) AS total, SUM(CASE WHEN used_at IS NULL THEN 1 ELSE 0 END) AS left FROM backup_codes');
   const trusted = await first(env, 'SELECT COUNT(*) AS n FROM trusted_devices WHERE expires_at > ?', c.t);
-  const accessConfigured = Boolean(env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD);
+  const acc = await accessConfig(env);
+  const accessOn = Boolean(acc && acc.state === 'active' && c.accessOk === true);
   const layers = [
-    { key: 'access', title: 'Cloudflare Access kapısı', ok: accessConfigured && c.accessOk === true,
-      detail: accessConfigured ? 'Panel adresine yalnızca onaylı e-posta, gelen kodla ulaşır.' : 'Henüz açılmadı — kurulum kılavuzu 6. adım. Açılana kadar panel şifre + kod ile korunur.' },
+    { key: 'access', title: 'Cloudflare Access kapısı', ok: accessOn,
+      detail: accessOn ? `Panel adresine yalnızca ${acc.email || 'onaylı e-posta'} adresine gelen tek kullanımlık kodla ulaşılır.`
+        : acc && acc.state === 'pending' ? 'Kuruldu: panel adresini yeniden açıp e-postanıza gelen kodla girin; ilk girişten sonra sunucu tarafı denetim de kalıcı olarak açılır.'
+        : 'Henüz açılmadı. Aşağıdaki “Cloudflare ile tamamla” düğmesiyle kurulabilir; açılana kadar panel şifre + kod ile korunur.' },
     { key: 'password', title: 'Güçlü şifre saklama', ok: String(admin.pass_hash).startsWith('pbkdf2-sha256$'), detail: 'Şifre geri çevrilemez PBKDF2 özeti olarak tutulur, düz metin asla.' },
     { key: 'totp', title: 'İki adımlı doğrulama', ok: Boolean(admin.totp_enc), detail: 'Her girişte doğrulama uygulamasından 6 haneli kod; anahtar veritabanında AES-256 ile şifreli.' },
     { key: 'ratelimit', title: 'Deneme sınırı ve kilit', ok: true, detail: `Aynı IP'den ${CFG.IP_MAX} hatada 15 dk kilit; toplamda ${CFG.ACCT_MAX} hatada hesap kilidi.` },
@@ -479,6 +489,7 @@ async function security(c) {
     trustedDevices: trusted.n,
     email: admin.email,
     publicKey: await signingPublicKey(env).catch(() => ''),
+    cloudflare: { keysInSecret: env.KEY_SOURCE === 'secret', access: acc ? acc.state : 'off' },
   });
 }
 
@@ -661,6 +672,89 @@ async function setupFinish(c) {
   return json({ ok: true, codes }, 200, { 'set-cookie': await createSession(c) });
 }
 
+// ---------- Bordro parametreleri (yayın iki adımlı kod ister) ----------
+async function payrollPublish(c) {
+  const guard = await sensitiveGuard(c);
+  if (guard) return guard;
+  const b = await readJson(c.req);
+  if (!(await checkTotp(c, await getAdmin(c.env), b.code))) return sensitiveFail(c, 'Doğrulama kodu hatalı');
+  await clearFails(c); // başarılı kod: ön sayım geri alınır (art arda yayınlar kilide yol açmasın)
+  return publishPayroll(c, b.base, b.note);
+}
+async function payrollRestore(c, [, id]) {
+  const guard = await sensitiveGuard(c);
+  if (guard) return guard;
+  const b = await readJson(c.req);
+  if (!(await checkTotp(c, await getAdmin(c.env), b.code))) return sensitiveFail(c, 'Doğrulama kodu hatalı');
+  await clearFails(c);
+  return restorePayroll(c, id);
+}
+async function watchRun(c) {
+  const r = await runWatch(c.env);
+  await audit(c, 'Bordro', `Resmi kaynaklar elle tarandı · ${r.checked.length} kaynak okundu${r.failed.length ? ', okunamayan: ' + r.failed.join(', ') : ''} · ${r.found} yeni başlık`);
+  return json(r);
+}
+
+// Müşterilerin bilgisayarına gidecek güncelleme: oturum yetmez, iki adımlı kod gerekir
+async function releasePublish(c, m) {
+  const guard = await sensitiveGuard(c);
+  if (guard) return guard;
+  const b = await c.req.clone().json().catch(() => ({}));
+  if (!(await checkTotp(c, await getAdmin(c.env), b.code))) return sensitiveFail(c, 'Doğrulama kodu hatalı');
+  await clearFails(c);
+  return publishRelease(c, m);
+}
+
+// ---------- Lisans yenileme takibi ----------
+async function renewals(c) {
+  const t = c.t;
+  const rows = await all(c.env,
+    `SELECT l.id, l.customer, l.email, l.phone, l.ends_at, l.status, p.name AS program
+     FROM licenses l JOIN programs p ON p.id = l.program_id
+     WHERE l.status != 'revoked' AND l.ends_at BETWEEN ? AND ? ORDER BY l.ends_at`,
+    t - 30 * 86400, t + 60 * 86400);
+  const list = rows.map((l) => ({
+    id: l.id, customer: l.customer, program: l.program, email: l.email, phone: l.phone,
+    ends: dateTR(l.ends_at), endsIso: isoDateTR(l.ends_at), daysLeft: Math.ceil((l.ends_at - t) / 86400),
+    suspended: l.status === 'suspended',
+  }));
+  const year = await all(c.env, "SELECT ends_at FROM licenses WHERE status != 'revoked' AND ends_at BETWEEN ? AND ?", t, t + 365 * 86400);
+  const months = {};
+  for (const r of year) { const k = isoDateTR(r.ends_at).slice(0, 7); months[k] = (months[k] || 0) + 1; }
+  return json({
+    list,
+    counts: {
+      expired: list.filter((l) => l.daysLeft <= 0).length,
+      in30: list.filter((l) => l.daysLeft > 0 && l.daysLeft <= 30).length,
+      in60: list.filter((l) => l.daysLeft > 30).length,
+    },
+    months: Object.entries(months).sort().map(([month, n]) => ({ month, n })),
+    expiringDays: LIC.EXPIRING / 86400,
+  });
+}
+
+// ---------- Cloudflare ile güvenlik kurulumu ----------
+async function cloudflareSetupRoute(c) {
+  const guard = await sensitiveGuard(c);
+  if (guard) return guard;
+  const b = await readJson(c.req);
+  const admin = await getAdmin(c.env);
+  if (!(await checkTotp(c, admin, b.code))) return sensitiveFail(c, 'Doğrulama kodu hatalı');
+  await clearFails(c);
+  if (!b.keys && !b.access) return fail(400, 'En az bir adım seçin.');
+  try {
+    const r = await cloudflareSetup(c.env, { token: b.token, keys: Boolean(b.keys), access: Boolean(b.access), email: admin.email });
+    await audit(c, 'Güvenlik', `Cloudflare kurulumu: ${r.done.map((d) => (d === 'keys' ? 'anahtarlar gizli değişkene taşındı' : 'Access kapısı kuruldu')).join(', ') || 'değişiklik yok'}${r.error ? ' · Access kurulamadı: ' + r.error : ''}`);
+    return json({ ok: true, ...r });
+  } catch (e) {
+    if (e instanceof CfError) {
+      await audit(c, 'Uyarı', `Cloudflare kurulumu tamamlanamadı: ${e.message}`);
+      return fail(400, e.message);
+    }
+    throw e;
+  }
+}
+
 // ---------- Yönlendirme ----------
 const ROUTES = [
   ['POST', /^\/logout$/, logout],
@@ -696,6 +790,16 @@ const ROUTES = [
   ['POST', /^\/licenses\/(\d+)\/revoke$/, revokeLicense],
   ['POST', /^\/licenses\/(\d+)\/devices\/(\d+)\/remove$/, removeDevice],
   ['POST', /^\/licenses\/(\d+)\/offline$/, offlineActivate],
+  ['POST', /^\/versions\/(\d+)\/release$/, releasePublish],
+  ['DELETE', /^\/versions\/(\d+)\/release$/, unpublishRelease],
+  ['GET', /^\/payroll$/, getPayroll],
+  ['POST', /^\/payroll\/preview$/, previewPayroll],
+  ['POST', /^\/payroll$/, payrollPublish],
+  ['POST', /^\/payroll\/(\d+)\/restore$/, payrollRestore],
+  ['POST', /^\/alerts\/(\d+)\/dismiss$/, dismissAlert],
+  ['POST', /^\/watch\/run$/, watchRun],
+  ['GET', /^\/renewals$/, renewals],
+  ['POST', /^\/security\/cloudflare$/, cloudflareSetupRoute],
 ];
 
 async function api(c) {
@@ -776,7 +880,15 @@ async function handleDownload(req, env, url, cl) {
 
 // ---------- Giriş noktası ----------
 export function isPanelPath(pathname) {
-  return pathname === '/panel' || pathname.startsWith('/panel/') || pathname.startsWith('/indir/') || pathname.startsWith('/lisans/api/');
+  return pathname === '/panel' || pathname.startsWith('/panel/') || pathname.startsWith('/indir/') || pathname.startsWith('/lisans/api/') || isPayrollPublicPath(pathname);
+}
+
+// Cloudflare zamanlanmış görevi (günde bir): resmi kaynak takibi
+export async function scheduledTasks(env) {
+  if (!env.DB) return;
+  env = await prepareEnv(env);
+  const r = await runWatch(env);
+  if (r.found) await audit({ env, cl: { ip: null, location: 'Zamanlanmış görev', ua: null } }, 'Bordro', `Resmi kaynaklarda ${r.found} yeni başlık bulundu; Bordro Parametreleri ekranında inceleyin`);
 }
 
 export async function handlePanel(request, env) {
@@ -785,16 +897,27 @@ export async function handlePanel(request, env) {
   try {
     // Panel ekranları dışındaki her şey veritabanı ister: tablolar ve anahtarlar burada (gerekirse) otomatik kurulur
     const staticPage = url.pathname === '/panel' || (url.pathname.startsWith('/panel/') && !url.pathname.startsWith('/panel/api/'));
+    // Bordro parametre dosyaları: yayın varsa veritabanından, yoksa statik dosya (hata olursa da statik)
+    if (isPayrollPublicPath(url.pathname)) {
+      try { env = await prepareEnv(env); } catch (e) { return env.ASSETS.fetch(request); }
+      return servePayrollPublic(request, env, url);
+    }
     if (!staticPage) env = await prepareEnv(env);
     if (url.pathname.startsWith('/indir/')) return secure(await handleDownload(request, env, url, cl), CSP_DL);
     // Müşteri programlarının lisans API'si (Access dışında, kendi deneme sınırıyla)
+    if (url.pathname.startsWith('/lisans/api/update-')) {
+      return secure(await handleUpdateApi(request, env, url, cl), CSP_PANEL);
+    }
     if (url.pathname.startsWith('/lisans/api/')) return secure(await handleLicenseApi(request, env, url, cl), CSP_PANEL);
 
     // 1. kat: Cloudflare Access (yapılandırıldıysa zorunlu)
+    // Kurulumdan sonra ilk geçerli Access girişi kapıyı kalıcı olarak etkinleştirir (yanlış kurulumda kilitlenmeyi önler)
     let accessOk = null;
-    if (env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD) {
-      accessOk = Boolean(await verifyAccessJwt(request.headers.get('cf-access-jwt-assertion'), env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD));
-      if (!accessOk) return secure(fail(403, 'Erişim reddedildi.'), CSP_PANEL);
+    const acc = await accessConfig(env);
+    if (acc && acc.team && acc.aud) {
+      accessOk = Boolean(await verifyAccessJwt(request.headers.get('cf-access-jwt-assertion'), acc.team, acc.aud));
+      if (acc.state === 'active' && !accessOk) return secure(fail(403, 'Erişim reddedildi.'), CSP_PANEL);
+      if (acc.state === 'pending' && accessOk && env.DB) await markAccessActive(env, acc);
     }
 
     if (url.pathname.startsWith('/panel/api/')) {

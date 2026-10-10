@@ -109,17 +109,25 @@
 
   // ---------- Görünümler ----------
   function route() {
+    if (!$('#modal').hidden) closeModal();
     const hash = (location.hash || '#programlar').slice(1);
-    const view = hash === 'guvenlik' ? 'guvenlik' : hash.startsWith('lisans') ? 'lisans' : 'programlar';
+    const view = hash === 'guvenlik' ? 'guvenlik' : hash === 'parametreler' ? 'parametreler' : hash.startsWith('lisans') ? 'lisans' : 'programlar';
     $('#view-programlar').hidden = view !== 'programlar';
     $('#view-guvenlik').hidden = view !== 'guvenlik';
     $('#view-lisans').hidden = view !== 'lisans';
+    $('#view-parametreler').hidden = view !== 'parametreler';
     const navKey = view === 'lisans' ? 'lisanslar' : hash;
     $$('.side-nav a').forEach((a) => a.classList.toggle('active', a.dataset.nav === navKey || (hash === '' && a.dataset.nav === 'programlar')));
     if (view === 'lisans') {
       state.view = 'lisans';
       window.scrollTo({ top: 0 });
       if (window.ODLic) window.ODLic.route(hash);
+      return;
+    }
+    if (view === 'parametreler') {
+      state.view = 'parametreler';
+      window.scrollTo({ top: 0 });
+      if (window.ODParam) window.ODParam.load();
       return;
     }
     if (view !== state.view) {
@@ -149,6 +157,44 @@
       toast(e.message, true);
     }
     loadLinks();
+    loadRenewals();
+  }
+
+  // ---------- Yenileme takibi ----------
+  function waNumber(phone) {
+    let d = String(phone || '').replace(/\D/g, '');
+    if (d.startsWith('0')) d = d.slice(1);
+    if (d.length === 10 && d.startsWith('5')) d = '90' + d;
+    return d.length >= 11 ? d : '';
+  }
+  async function loadRenewals() {
+    let r;
+    try { r = await call('/renewals'); } catch { return; }
+    const card = $('#renewCard');
+    card.hidden = !r.list.length;
+    if (!r.list.length) return;
+    const chip = (text, kind) => h('span', { class: 'pill pill-' + kind, text });
+    $('#renewChips').replaceChildren(
+      r.counts.expired ? chip(`${r.counts.expired} süresi doldu`, 'bad') : null,
+      r.counts.in30 ? chip(`${r.counts.in30} lisans 30 gün içinde`, 'warn') : null,
+      r.counts.in60 ? chip(`${r.counts.in60} lisans 31–60 gün`, 'info') : null);
+    $('#renewList').replaceChildren(...r.list.map((l) => {
+      const when = l.daysLeft <= 0 ? `${-l.daysLeft} gün önce doldu` : `${l.daysLeft} gün kaldı`;
+      const text = l.daysLeft <= 0
+        ? `Merhaba,\n\n${l.program} lisansınızın süresi ${l.ends} tarihinde doldu ve program kilitlendi. Yenileme için bu mesaja yanıt verebilirsiniz; yenileme yapıldığında program internet bağlantısıyla kendiliğinden açılır.\n\nÖzkan Demir\nSerbest Muhasebeci Mali Müşavir\n0551 600 77 87`
+        : `Merhaba,\n\n${l.program} lisansınızın süresi ${l.ends} tarihinde doluyor (${l.daysLeft} gün kaldı). Kesintisiz kullanım için yenilemeyi bu tarihten önce yapalım; uygun olduğunuzda bu mesaja yanıt verebilirsiniz.\n\nÖzkan Demir\nSerbest Muhasebeci Mali Müşavir\n0551 600 77 87`;
+      const wa = waNumber(l.phone);
+      return h('div', { class: 'renew' },
+        h('div', {}, h('b', { text: l.customer }), h('small', { text: `${l.program} · bitiş ${l.ends}${l.suspended ? ' · askıda' : ''}` })),
+        h('div', { class: 'btn-row' },
+          h('span', { class: 'pill pill-' + (l.daysLeft <= 0 ? 'bad' : l.daysLeft <= 30 ? 'warn' : 'info'), text: when }),
+          h('a', { class: 'btn btn-sm btn-green', target: '_blank', rel: 'noopener noreferrer', href: `https://wa.me/${wa}?text=${encodeURIComponent(text)}` }, wa ? 'WhatsApp hatırlatma' : 'WhatsApp mesajı'),
+          l.email ? h('a', { class: 'btn btn-sm', href: `mailto:${encodeURIComponent(l.email)}?subject=${encodeURIComponent(l.program + ' lisans yenileme')}&body=${encodeURIComponent(text)}` }, 'E-posta') : null,
+          h('a', { class: 'btn btn-sm btn-navy', href: '#lisans-' + l.id }, 'Süreyi uzat')));
+    }));
+    $('#renewSub').textContent = r.months.length
+      ? `Önümüzdeki 12 ayda yenilenecek lisans: ${r.months.reduce((s, m) => s + m.n, 0)} · ${r.months.map((m) => m.month.slice(5) + '/' + m.month.slice(2, 4) + ': ' + m.n).join(' · ')}`
+      : 'Süresi 60 gün içinde dolacak ve son 30 günde dolmuş lisanslar.';
   }
 
   function stat(label, value, note) {
@@ -168,7 +214,7 @@
     const rows = (state.overview ? state.overview.programs : []).filter((p) => !term || p.name.toLocaleLowerCase('tr').includes(term));
     const body = $('#progRows');
     if (!rows.length) {
-      body.replaceChildren(h('tr', {}, h('td', { colspan: 6, class: 'empty', text: term ? 'Aramaya uyan program yok.' : 'Henüz program yok.' })));
+      body.replaceChildren(h('tr', {}, h('td', { colspan: 7, class: 'empty', text: term ? 'Aramaya uyan program yok.' : 'Henüz program yok.' })));
       return;
     }
     body.replaceChildren(...rows.map((p) => {
@@ -181,6 +227,10 @@
         h('td', { class: 'num', text: v ? v.version : '—' }),
         h('td', { text: v ? v.sizeText : '—' }),
         h('td', { text: v ? v.date : '—' }),
+        h('td', {}, p.release
+          ? h('span', {}, h('span', { class: 'pill pill-' + (p.release.mandatory ? 'warn' : 'ok'), text: `${p.release.version}${p.release.mandatory ? ' · zorunlu' : ''}` }),
+            h('span', { class: 'sub', text: p.release.devices ? `${p.release.upToDate}/${p.release.devices} cihaz güncel` : 'Henüz etkin cihaz yok' }))
+          : h('span', { class: 'pill pill-mute', text: 'Yayında değil' })),
         h('td', {}, badge),
         h('td', {}, h('div', { class: 'acts' },
           h('button', { type: 'button', class: 'btn btn-sm', onclick: () => openVersions(p), disabled: !p.versionCount }, `Sürümler${p.versionCount ? ' (' + p.versionCount + ')' : ''}`),
@@ -199,7 +249,7 @@
       const r = await call(`/programs/${p.id}/versions`);
       if (!r.versions.length) { wrap.replaceChildren(h('p', { class: 'empty', text: 'Bu programa ait sürüm yok.' })); return; }
       wrap.replaceChildren(h('table', { class: 'tbl mid' },
-        h('thead', {}, h('tr', {}, ['Sürüm', 'Tarih', 'Boyut', 'Notlar / SHA-256', ''].map((t, i) => h('th', { class: i === 4 ? 'r' : null, text: t })))),
+        h('thead', {}, h('tr', {}, ['Sürüm', 'Tarih', 'Boyut', 'Notlar / SHA-256', 'Müşteri güncellemesi', ''].map((t, i) => h('th', { class: i === 5 ? 'r' : null, text: t })))),
         h('tbody', {}, r.versions.map((v) => {
           const del = h('button', { type: 'button', class: 'btn btn-sm btn-danger' }, 'Sil');
           armed(del, 'Emin misiniz? Sil', async () => {
@@ -215,6 +265,10 @@
             h('td', { text: v.date }),
             h('td', { text: v.sizeText }),
             h('td', {}, v.notes ? h('span', { text: v.notes }) : h('span', { class: 'muted', text: 'Not yok' }), h('span', { class: 'sub mono', text: v.sha256 || '' })),
+            h('td', {}, v.released
+              ? h('div', { class: 'acts' }, h('span', { class: 'pill pill-' + (v.mandatory ? 'warn' : 'ok'), text: v.mandatory ? 'Yayında · zorunlu' : 'Yayında' }),
+                (() => { const b = h('button', { type: 'button', class: 'btn btn-sm' }, 'Kaldır'); armed(b, 'Emin misiniz?', async () => { try { await call(`/versions/${v.id}/release`, { method: 'DELETE' }); toast(`${v.version} güncelleme yayınından kaldırıldı.`); closeModal(); loadOverview(); } catch (e) { toast(e.message, true); } }); return b; })())
+              : h('button', { type: 'button', class: 'btn btn-sm btn-gold', onclick: () => releaseModal(p, v) }, 'Güncelleme olarak yayınla')),
             h('td', {}, h('div', { class: 'acts' },
               h('button', { type: 'button', class: 'btn btn-sm btn-navy', onclick: () => { closeModal(); prepareLink(v.id, `${p.name} — ${v.version}`); } }, 'Link'),
               del)),
@@ -222,6 +276,31 @@
         })),
       ));
     } catch (e) { wrap.replaceChildren(h('p', { class: 'empty', text: e.message })); }
+  }
+
+  function releaseModal(p, v) {
+    const notes = h('textarea', { class: 'textarea', rows: 3, maxlength: 1000 }, v.notes || '');
+    const mand = h('input', { type: 'checkbox' });
+    const err = h('div', { class: 'alert', role: 'alert', hidden: true });
+    const btn = h('button', { type: 'submit', class: 'btn btn-navy' }, 'Müşterilere yayınla');
+    const form = h('form', { class: 'modal-body', novalidate: true },
+      h('p', { class: 'muted', text: `${p.name} ${v.version}, lisansı etkin tüm müşterilerin programında “Yeni sürüm var” olarak görünür. Kurulumu müşterinin yöneticisi onaylar; program dosyanın SHA-256 parmak izini doğrulamadan kurmaz.` }),
+      h('label', { class: 'field' }, 'Müşterinin göreceği sürüm notu', notes),
+      h('label', { class: 'check' }, mand, h('span', { text: 'Zorunlu güncelleme (program, yönetici erteleyemesin diye uyarır)' })),
+      codeField('relCode', 'Onay için doğrulama uygulamasındaki 6 haneli kod'),
+      err, btn);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg(err, '');
+      btn.disabled = true;
+      try {
+        await call(`/versions/${v.id}/release`, { method: 'POST', body: { notes: notes.value, mandatory: mand.checked, code: $('#relCode').value.trim() } });
+        closeModal();
+        toast(`${p.name} ${v.version} müşterilere yayınlandı.`);
+        loadOverview();
+      } catch (ex) { msg(err, ex.message); } finally { btn.disabled = false; }
+    });
+    openModal(`${p.name} ${v.version} · Güncelleme olarak yayınla`, form);
   }
 
   // ---------- Yükleme ----------
@@ -457,6 +536,13 @@
       $('#trInfo').textContent = s.trustedDevices ? `${s.trustedDevices} cihaz 30 gün boyunca kod istemeden giriş yapabilir` : 'Güvenilir cihaz yok';
       $('#trBtn').disabled = !s.trustedDevices;
       $('#pkInfo').textContent = s.publicKey || '—';
+      const cfNeeded = !s.cloudflare.keysInSecret || s.cloudflare.access === 'off';
+      $('#cfBox').hidden = !cfNeeded && s.cloudflare.access !== 'pending';
+      $('#cfText').textContent = s.cloudflare.access === 'pending'
+        ? 'Access kuruldu: paneli kapatıp yeniden açın, e-postanıza gelen kodla girin. Kod gelmezse Cloudflare Zero Trust → Access → Applications bölümünden uygulamayı silebilirsiniz.'
+        : 'Anahtar taşıma ve Access kapısı, bir Cloudflare API anahtarıyla buradan tek seferde kurulur.';
+      $('#cfBtn').hidden = !cfNeeded;
+      state.cf = s.cloudflare;
       $('#pkBtn').onclick = async () => { try { await navigator.clipboard.writeText(s.publicKey); toast('Açık anahtar kopyalandı.'); } catch { toast('Kopyalanamadı.', true); } };
     } catch (e) { toast(e.message, true); }
     loadAudit();
@@ -560,13 +646,49 @@
     });
   });
 
+  $('#cfBtn').addEventListener('click', () => {
+    const cfs = state.cf || {};
+    const keys = h('input', { type: 'checkbox', checked: !cfs.keysInSecret, disabled: cfs.keysInSecret });
+    const access = h('input', { type: 'checkbox', checked: cfs.access === 'off', disabled: cfs.access !== 'off' });
+    formModal('Cloudflare ile güvenliği tamamla', [
+      h('ol', { class: 'steps' },
+        h('li', {}, 'Cloudflare\'de ', h('a', { href: 'https://dash.cloudflare.com/profile/api-tokens', target: '_blank', rel: 'noopener noreferrer' }, 'API Tokens'), ' → “Create Token” → “Create Custom Token”.'),
+        h('li', {}, 'İzinler (Account / Hesap düzeyinde):',
+          h('ul', { class: 'perm' },
+            h('li', {}, h('code', { text: 'Workers Scripts' }), ' → Edit'),
+            h('li', {}, h('code', { text: 'Access: Apps and Policies' }), ' → Edit'),
+            h('li', {}, h('code', { text: 'Access: Organizations, Identity Providers, and Groups' }), ' → Edit'))),
+        h('li', { text: 'Account Resources: kendi hesabınız. Kısa bir süre (ör. 1 gün) seçip oluşturun, çıkan anahtarı aşağıya yapıştırın.' }),
+        h('li', { text: 'Access için Cloudflare panelinde “Zero Trust” bölümüne bir kez girip ücretsiz planı seçmiş olmanız gerekir.' })),
+      h('label', { class: 'check' }, keys, h('span', { text: cfs.keysInSecret ? 'Anahtarlar zaten gizli değişkende' : 'Şifreleme ve lisans imza anahtarlarını Cloudflare gizli değişkenine taşı' })),
+      h('label', { class: 'check' }, access, h('span', { text: cfs.access !== 'off' ? 'Access kapısı zaten kurulu' : 'Cloudflare Access kapısını kur (panel yalnızca e-postanıza gelen kodla açılır)' })),
+      h('label', { class: 'field' }, 'Cloudflare API anahtarı', h('input', { class: 'input mono', id: 'cfToken', type: 'password', autocomplete: 'off', spellcheck: 'false' })),
+      h('small', { class: 'muted', text: 'Anahtar yalnızca bu işlem sırasında kullanılır, hiçbir yere kaydedilmez. İşlem bitince Cloudflare\'den silebilirsiniz.' }),
+      codeField('cfCode'),
+    ], 'Kurulumu başlat', async () => {
+      const r = await call('/security/cloudflare', { method: 'POST', body: { token: $('#cfToken').value.trim(), keys: keys.checked && !keys.disabled, access: access.checked && !access.disabled, code: $('#cfCode').value.trim() } });
+      const parts = [];
+      if (r.done.includes('keys')) parts.push('Anahtarlar Cloudflare gizli değişkenine yazıldı. Birkaç dakika içinde veritabanındaki kopyalar kendiliğinden silinir.');
+      if (r.done.includes('access')) parts.push('Access kapısı kuruldu ve hemen devreye girdi. Paneli kapatıp yeniden açın: Cloudflare e-postanıza tek kullanımlık bir kod gönderir. Kod gelmezse Cloudflare → Zero Trust → Access → Applications bölümünden “ozkandemir.net Yönetim Paneli” uygulamasını silerek kapıyı kaldırabilirsiniz.');
+      const body = h('div', { class: 'modal-body' }, h('div', { class: 'alert alert-ok', text: parts.join(' ') }), r.error ? h('div', { class: 'alert alert-err', text: 'Access kurulamadı: ' + r.error }) : null);
+      if (r.recovery) {
+        const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(r.recovery, null, 2)], { type: 'application/json' }));
+        body.append(
+          h('div', { class: 'alert alert-warn', text: 'Kurtarma yedeği: anahtarlar artık yalnızca Cloudflare\'de. Bu dosyayı internete bağlı olmayan güvenli bir yerde (USB bellek, kasadaki kâğıt çıktı) saklayın; Cloudflare hesabı kaybolursa lisansları ve paneli kurtarmanın tek yolu budur. Kimseyle paylaşmayın.' }),
+          h('a', { class: 'btn btn-sm', href: blobUrl, download: 'ozkandemir-anahtar-kurtarma-yedegi.json' }, 'Kurtarma yedeğini indir'));
+      }
+      openModal('Kurulum tamamlandı', body);
+      loadSecurity();
+    });
+  });
+
   $('#logoutBtn').addEventListener('click', async () => {
     try { await api('/logout', { method: 'POST', body: {} }); } catch {}
     location.replace('/panel/');
   });
 
   // Lisans modülü (lisans.js) için ortak yardımcılar
-  window.ODApp = { call, toast, msg, openModal, closeModal, armed, left, browserName };
+  window.ODApp = { call, toast, msg, openModal, closeModal, armed, left, browserName, codeField };
 
   // ---------- Başlangıç ----------
   (async function boot() {
@@ -593,6 +715,7 @@
     } catch {}
     state.view = '';
     route();
+    call('/payroll').then((p) => { const b = $('#paramBadge'); b.textContent = String(p.openAlerts); b.hidden = !p.openAlerts; }).catch(() => {});
     setInterval(idleTick, 15000);
     idleTick();
   })();

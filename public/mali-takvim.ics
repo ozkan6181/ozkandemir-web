@@ -1,0 +1,207 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//ozkandemir.net//Mali Takvim//TR
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Mali Takvim — Özkan Demir SMMM
+X-WR-TIMEZONE:Europe/Istanbul
+X-WR-CALDESC:GİB ve SGK kaynaklı beyan ve ödeme tarihleri. Her yüküml
+ ülük her mükellefi kapsamayabilir.
+REFRESH-INTERVAL;VALUE=DURATION:P1D
+X-PUBLISHED-TTL:P1D
+BEGIN:VEVENT
+UID:55f07b62217ce600e288@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261007
+DTEND;VALUE=DATE:20261008
+SUMMARY:Vergi: Noterlerce makbuz karşılığı ödemeler
+DESCRIPTION:Eylül 2026 dönemi beyan ve ödeme\nKaynak: GİB\nGüncel takv
+ im: https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: Noterlerce makbuz karşılığı ödemeler
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:063396b2b1c7f5231d33@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261012
+DTEND;VALUE=DATE:20261013
+SUMMARY:Vergi: ÖTV (16–30 Eylül petrol/doğalgaz)
+DESCRIPTION:Beyan ve ödeme\nKaynak: GİB\nGüncel takvim: https://www.ozka
+ ndemir.net/muhasebe-merkezi.html#mali-takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: ÖTV (16–30 Eylül petrol/doğalgaz)
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:76a694ac3492066d0a58@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261015
+DTEND;VALUE=DATE:20261016
+SUMMARY:Vergi: ÖTV / Özel İletişim Vergisi
+DESCRIPTION:Eylül 2026 dönemine ilişkin ilgili yükümlülükler\nKaynak
+ : GİB\nGüncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.html#m
+ ali-takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: ÖTV / Özel İletişim Vergisi
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:d5f5df734c62d3b36d2a@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261020
+DTEND;VALUE=DATE:20261021
+SUMMARY:Vergi: 20 Ekim vadeli vergiler
+DESCRIPTION:İlan-reklam\, yangın sigortası ve bazı özel vergiler\nKayn
+ ak: GİB\nGüncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.html
+ #mali-takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: 20 Ekim vadeli vergiler
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:e20d9f2341616b0028ff@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261026
+DTEND;VALUE=DATE:20261027
+SUMMARY:Vergi: KDV Tevkifatı + Muhtasar ve Prim Hizmet
+DESCRIPTION:Eylül 2026 dönemi beyan ve ödeme\nKaynak: GİB\nGüncel takv
+ im: https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: KDV Tevkifatı + Muhtasar ve Prim Hizmet
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:fd5383d27d970130e296@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261028
+DTEND;VALUE=DATE:20261029
+SUMMARY:Vergi: KDV Beyan ve Ödeme
+DESCRIPTION:Eylül 2026 dönemi ve üç aylık mükellefler\nKaynak: GİB\n
+ Güncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takv
+ im
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: KDV Beyan ve Ödeme
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:42d43a9c2c8219b14ef0@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261102
+DTEND;VALUE=DATE:20261103
+SUMMARY:SGK: SGK prim ödemesi
+DESCRIPTION:Eylül 2026 / 4-a özel sektör için tatil sonrası ilk iş g
+ ünü\nKaynak: SGK\nGüncel takvim: https://www.ozkandemir.net/muhasebe-me
+ rkezi.html#mali-takvim
+CATEGORIES:SGK
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: SGK prim ödemesi
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:7f970eca43fd826ae96b@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261102
+DTEND;VALUE=DATE:20261103
+SUMMARY:Vergi: Bazı dönemsel bildirim ve vergiler
+DESCRIPTION:Eylül 2026 / III. çeyrek için ilgili mükellefler\nKaynak: G
+ İB\nGüncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.html#mali
+ -takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: Bazı dönemsel bildirim ve vergiler
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:93ce217deaa8605139cd@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261117
+DTEND;VALUE=DATE:20261118
+SUMMARY:Vergi: III. Geçici Vergi
+DESCRIPTION:Temmuz–Ağustos–Eylül 2026 gelir ve kurum geçici vergi\nK
+ aynak: GİB\nGüncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.h
+ tml#mali-takvim
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: III. Geçici Vergi
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:3a15451ec0da59adb26b@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261210
+DTEND;VALUE=DATE:20261211
+SUMMARY:e-Defter: e-Defter berat yükleme
+DESCRIPTION:Mükellef ve yükleme tercihine göre ilgili dönemler\nKaynak:
+  GİB\nGüncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.html#ma
+ li-takvim
+CATEGORIES:e-Defter
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: e-Defter berat yükleme
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:a51794671a2f2d2478ad@ozkandemir.net
+DTSTAMP:20261002T000000Z
+DTSTART;VALUE=DATE:20261231
+DTEND;VALUE=DATE:20270101
+SUMMARY:Vergi: Ülke Bazlı Rapor
+DESCRIPTION:2025 yılı Ek-6\, kapsama giren kurumlar için\nKaynak: GİB\n
+ Güncel takvim: https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takv
+ im
+CATEGORIES:Vergi
+TRANSP:TRANSPARENT
+URL:https://www.ozkandemir.net/muhasebe-merkezi.html#mali-takvim
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Yarın: Ülke Bazlı Rapor
+TRIGGER:-PT15H
+END:VALARM
+END:VEVENT
+END:VCALENDAR

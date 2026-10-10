@@ -43,6 +43,7 @@ PAGES = {
     "hesaplama-araclari.html": (None, None, "ozkan-demir", "0.8"),
     "hakkimda.html": (None, None, "ozkan-demir", "0.7"),
     "iletisim.html": (None, None, "ozkan-demir", "0.7"),
+    "kvkk.html": (None, None, "ozkan-demir", "0.3"),
 }
 
 def rename(h, old, new):

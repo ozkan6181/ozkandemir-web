@@ -50,7 +50,17 @@ export function createR2({ minPartSize = 5 * 1024 * 1024 } = {}) {
       objects.set(key, { data: await toBytes(body), http: opts.httpMetadata, custom: opts.customMetadata, at: new Date() });
       return view(key, objects.get(key));
     },
-    async get(key) { const r = objects.get(key); return r ? view(key, r) : null; },
+    async get(key, opts = {}) {
+      const r = objects.get(key);
+      if (!r) return null;
+      const hdr = opts.range && typeof opts.range.get === 'function' ? opts.range.get('range') : null;
+      const m = hdr && hdr.match(/^bytes=(\d+)-(\d*)$/);
+      if (!m) return view(key, r);
+      const offset = Number(m[1]);
+      const end = m[2] ? Math.min(Number(m[2]), r.data.length - 1) : r.data.length - 1;
+      const part = r.data.slice(offset, end + 1);
+      return { ...view(key, r), range: { offset, length: part.length }, get body() { return new Response(part).body; } };
+    },
     async head(key) { const r = objects.get(key); return r ? { ...view(key, r), body: undefined } : null; },
     async delete(keys) { for (const k of [].concat(keys)) objects.delete(k); },
     async createMultipartUpload(key, opts = {}) {

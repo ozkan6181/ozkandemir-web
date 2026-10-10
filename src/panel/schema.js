@@ -1,6 +1,7 @@
 // ozkandemir.net — Veritabanı şeması (migrations/*.sql ile aynı; tests/test-config.mjs eşitliği denetler)
 // Panel ilk açıldığında bu ifadeler tek işlemde (batch) çalıştırılır; tümü "IF NOT EXISTS" olduğundan tekrar çalışması güvenlidir.
-export const SCHEMA_VERSION = '3';
+// Bu dosya elle düzenlenmez: node scripts/build-schema.mjs
+export const SCHEMA_VERSION = '4';
 export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS admin (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  pass_changed_at INTEGER NOT NULL,\n  totp_enc TEXT NOT NULL,\n  totp_last_step INTEGER NOT NULL DEFAULT 0,\n  totp_pending_enc TEXT,\n  updated_at INTEGER NOT NULL\n)",
   "CREATE TABLE IF NOT EXISTS backup_codes (\n  code_hash TEXT PRIMARY KEY,\n  used_at INTEGER\n)",
@@ -27,5 +28,11 @@ export const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS idx_license_events ON license_events(license_id, at)",
   "CREATE INDEX IF NOT EXISTS idx_license_events_at ON license_events(at, type)",
   "CREATE TABLE IF NOT EXISTS system_keys (\n  name TEXT PRIMARY KEY,\n  value TEXT NOT NULL,\n  created_at INTEGER NOT NULL\n)",
-  "CREATE TABLE IF NOT EXISTS setup_pending (\n  token_hash TEXT PRIMARY KEY,\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  totp_enc TEXT NOT NULL,\n  expires_at INTEGER NOT NULL\n)"
+  "CREATE TABLE IF NOT EXISTS setup_pending (\n  token_hash TEXT PRIMARY KEY,\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  totp_enc TEXT NOT NULL,\n  expires_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS releases (\n  version_id INTEGER PRIMARY KEY REFERENCES versions(id),\n  program_id INTEGER NOT NULL REFERENCES programs(id),\n  mandatory INTEGER NOT NULL DEFAULT 0,\n  public_notes TEXT,\n  published_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS payroll_params (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  base_json TEXT NOT NULL,\n  note TEXT,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS source_alerts (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  source TEXT NOT NULL,\n  title TEXT NOT NULL,\n  url TEXT NOT NULL,\n  keyword TEXT,\n  found_at INTEGER NOT NULL,\n  dismissed_at INTEGER,\n  UNIQUE (source, title)\n)",
+  "CREATE TABLE IF NOT EXISTS settings (\n  name TEXT PRIMARY KEY,\n  value TEXT NOT NULL,\n  updated_at INTEGER NOT NULL\n)",
+  "CREATE INDEX IF NOT EXISTS idx_releases_program ON releases(program_id)",
+  "CREATE INDEX IF NOT EXISTS idx_source_alerts_found ON source_alerts(found_at)",
 ];

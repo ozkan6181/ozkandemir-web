@@ -53,6 +53,24 @@ Hazır örnekler:
 - `python/ornekler/fastapi_ornek.py` — NİS PDKS, Yıllık İzin, Satınalma Denetim, Cari Mutabakat, Cari360 (web tabanlı). Kilitliyken tüm sayfaları `/lisans` ekranına yönlendirir.
 - `python/ornekler/tkinter_ornek.py` — Banka XML Aktarım (masaüstü). Açılışta lisans penceresi.
 
+## Güncelleme (V1.1)
+
+Panelde bir sürüm "Güncelleme olarak yayınla" ile müşterilere açılır. Programda:
+
+```python
+yeni = lic.check_update()          # yeni sürüm yoksa None
+if yeni:
+    # Yöneticiye göster: yeni.version, yeni.notes, yeni.mandatory
+    if yonetici_onayladi:
+        dosya = lic.download_update(yeni, progress=lambda a, t: ...)
+        # dosya: SHA-256'sı imzalı bildirimle doğrulanmış kurulum paketi → kurulumu başlat
+```
+
+- Bildirim ozkandemir.net imzalıdır; başka bir sunucu veya değiştirilmiş bildirim kabul edilmez.
+- İndirme izni 1 saat geçerlidir; kesilirse tekrar çağrıldığında kaldığı yerden devam eder.
+- Parmak izi tutmazsa dosya silinir ve `LicenseError(code="checksum")` fırlatılır.
+- Komut satırı: `python odlisans.py --product NPDK --public-key … update-check` / `update-download --dir C:\Guncelleme`
+
 ## Çevrimdışı etkinleştirme
 
 İnternete çıkamayan sunucular için:

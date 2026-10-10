@@ -8,8 +8,9 @@
     "binding": "ASSETS",
     // /api/* : mevcut canlı veri API'leri (BIST, TCMB, haberler)
     // /panel, /panel/* : yönetim paneli (ekranlar + /panel/api/*)
-    // /indir/* : müşteri indirme bağlantıları · /lisans/api/* : programların lisans API'si
-    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*"]
+    // /indir/* : müşteri indirme bağlantıları · /lisans/api/* : programların lisans ve güncelleme API'si
+    // /pdks/parametreler.json, /params-2026.js : panelden yayınlanan bordro parametreleri
+    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*", "/pdks/parametreler.json", "/params-2026.js"]
   },
   // Panel veritabanı: kimlik yazılmadığı için Cloudflare ilk yayında otomatik oluşturur ve bağlar.
   // Tablolar ve gizli anahtarlar panel ilk açıldığında otomatik kurulur.
@@ -27,5 +28,7 @@
     // Web üzerinden ilk kurulum kodunun SHA-256 özeti (kodun kendisi değil). Yönetici hesabı oluşunca kurulum kapanır.
     "SETUP_CODE_HASH": "b7af38bc1703ea279170e7e6aeb4b6e7164acdd45ca5e2da1d21b11d027edbdb"
   },
+  // Her gün 07:17 (TSİ) resmi kaynak takibi
+  "triggers": { "crons": ["17 4 * * *"] },
   "observability": { "enabled": true }
 }

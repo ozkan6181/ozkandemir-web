@@ -719,7 +719,20 @@ Bu repo ozkandemir.net V3.5.8 çalışan ana sürümdür. Önce proje_devir.md d
 - `PANEL_ENC_KEY` hesap sıfırlamada gerekir (`PANEL-SIFRELEME-ANAHTARI-YEDEK.txt`); kaybolursa panelde lisans anahtarlarının tamamı görüntülenemez (maskeli görünür), lisanslar çalışmaya devam eder.
 
 ### Test
-`npm test` → hesaplama + 41 panel + 33 lisans testi (Python istemcisiyle uçtan uca dahil). Node 22+ gerekir (`node:sqlite`).
+`npm test` → hesaplama + 41 panel + 33 lisans + 23 V3.8 testi (Python istemcisiyle uçtan uca dahil). Node 22+ gerekir (`node:sqlite`).
 
 ### Sıradaki iş
 Python lisans istemcisinin (`lisans-istemcisi/python/odlisans.py`) programlara eklenmesi — önerilen sıra NİS PDKS → Yıllık İzin → diğerleri. Her program kendi sürüm çalışmasıdır.
+
+
+## 19. V3.8.0 — Güncelleme dağıtımı, bordro parametreleri, KVKK (11.10.2026)
+
+**Güncel ana sürüm: V3.8.0.**
+
+- **Güncelleme dağıtımı:** Panel → Programlar → Sürümler → "Güncelleme olarak yayınla". Program `POST /lisans/api/update-check` ile sorar (lisans etkin + cihaz kayıtlı olmalı); yanıt Ed25519 imzalı `od-update` bildirimidir. İndirme `GET /lisans/api/update-download?t=…` (imzalı, 1 saat, Range destekli). Python istemcisi V1.1: `check_update()`, `download_update()` (SHA-256 doğrulama, kaldığı yerden devam). Kurulum müşterinin yöneticisinin onayıyla yapılır.
+- **Bordro parametreleri:** Panel → Bordro parametreleri. Yayın 2FA kodu ister, her yayın `payroll_params` tablosunda saklanır, geri alınabilir. Yayın varsa `/pdks/parametreler.json` ve `/params-2026.js` veritabanından sunulur (takvim satırları statik dosyadan korunur); yoksa statik dosyalar. Hesaplama `src/panel/bordro.js` (script ile ortak).
+- **Resmi kaynak takibi:** Cron `17 4 * * *` (07:17 TSİ). GİB mevzuat, SGK duyuru ve Resmî Gazete ana sayfasındaki başlıklar anahtar kelimelerle taranır, panelde uyarı olur. Değerleri kendisi değiştirmez. İlk tarama mevcut başlıkları sessizce kaydeder.
+- **Yenileme takibi:** Programlar ekranında süresi 60 gün içinde dolacak ve son 30 günde dolmuş lisanslar; WhatsApp/e-posta hatırlatma metni.
+- **Cloudflare kurulumu:** Güvenlik → "Cloudflare ile tamamla": API anahtarıyla anahtarları gizli değişkene taşır (DB kopyaları gizli değişken devreye girince silinir; kurtarma yedeği bir kez indirilir) ve Access kapısını kurar. Cloudflare kapıyı uygulama oluşturulur oluşturulmaz uygular; Worker tarafındaki ek denetim ilk geçerli girişte açılır. Kilitlenme halinde: e-posta kodu gelmiyorsa Zero Trust → Access → Applications'tan uygulamayı silin; Worker denetimi için Worker değişkeni `ACCESS_KAPAT=1`. Anahtarlar taşındıktan sonra gizli değişkenler kaybolursa sistem yeni anahtar üretmez, 503 verir (`keys_moved` işareti) — kurtarma yedeğinden gizli değişkenleri geri yükleyin. Güncelleme yayını ve bordro yayını iki adımlı kod ister.
+- **Site:** `kvkk.html` (aydınlatma + gizlilik + çerez), tüm sayfaların altında bağlantı. Mali takvim aboneliği `mali-takvim.ics` (`node scripts/takvim-ics.mjs`); Muhasebe Merkezi ve ana sayfada "Takvimime ekle".
+- Test: `npm test` → ek olarak `tests/test-v38.mjs` (23 test, Python güncelleme istemcisi dahil).

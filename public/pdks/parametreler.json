@@ -50,6 +50,28 @@
         "oran": 0.4
       }
     ],
+    "genel_tarife": [
+      {
+        "ust_sinir": 190000,
+        "oran": 0.15
+      },
+      {
+        "ust_sinir": 400000,
+        "oran": 0.2
+      },
+      {
+        "ust_sinir": 1000000,
+        "oran": 0.27
+      },
+      {
+        "ust_sinir": 5300000,
+        "oran": 0.35
+      },
+      {
+        "ust_sinir": null,
+        "oran": 0.4
+      }
+    ],
     "asgari_ucret_istisnasi": {
       "aciklama": "Asgari ücrete isabet eden gelir vergisi istisnası; kümülatif matrah nedeniyle aya göre değişir.",
       "aylik": [
