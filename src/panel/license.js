@@ -155,6 +155,11 @@ const STATE_MSG = {
 
 function parseJsonSafe(s, def) { try { return JSON.parse(s); } catch { return def; } }
 
+// V3.11: siteden verilen 7 günlük deneme lisansı (limits_json.deneme = 1); süreyi uzatınca işaret kalkar
+export const TRIAL_EXPIRED_MSG = '7 günlük deneme süresi doldu. Satın almak için Özkan Demir ile iletişime geçin (0551 600 77 87); verileriniz korunuyor.';
+export function isTrial(lic) { return Number(parseJsonSafe(lic.limits_json || '{}', {}).deneme) === 1; }
+const stateMsg = (lic, state) => (state === 'expired' && isTrial(lic) ? TRIAL_EXPIRED_MSG : STATE_MSG[state] || '');
+
 async function buildToken(env, lic, prefix, deviceId, state, t, offline = false) {
   const active = state === 'active';
   return signPayload(env, {
@@ -167,7 +172,7 @@ async function buildToken(env, lic, prefix, deviceId, state, t, offline = false)
     key: lic.key_mask,
     device: deviceId,
     status: state,
-    message: active ? '' : STATE_MSG[state] || '',
+    message: active ? '' : stateMsg(lic, state),
     starts: lic.starts_at,
     expires: lic.ends_at,
     limits: parseJsonSafe(lic.limits_json, {}),
@@ -219,7 +224,7 @@ async function activateCore(env, lic, body, cl, t, mode) {
   const prefix = body.product;
   const state = licState(lic, t);
   if (state !== 'active') {
-    return { status: 403, data: { ok: false, code: state, message: STATE_MSG[state], token: await buildToken(env, lic, prefix, body.deviceId, state, t) } };
+    return { status: 403, data: { ok: false, code: state, message: stateMsg(lic, state), token: await buildToken(env, lic, prefix, body.deviceId, state, t) } };
   }
   const act = await first(env, 'SELECT * FROM activations WHERE license_id = ? AND device_id = ?', lic.id, body.deviceId);
   const usage = JSON.stringify(body.usage);
@@ -328,7 +333,7 @@ export async function listLicenses(c) {
     id: l.id, programId: l.program_id, program: l.program, prefix: PRODUCTS[l.slug] ? PRODUCTS[l.slug].prefix : '',
     customer: l.customer, key: l.key_mask, starts: dateTR(l.starts_at), ends: dateTR(l.ends_at), endsIn: l.ends_at - t,
     devices: l.devices, maxDevices: l.max_devices, lastSeen: l.last_seen, lastSeenAgo: l.last_seen ? t - l.last_seen : null,
-    state: displayState(l, t, l.devices, l.last_seen), email: l.email, phone: l.phone,
+    state: displayState(l, t, l.devices, l.last_seen), email: l.email, phone: l.phone, trial: isTrial(l),
   }));
   const counts = {};
   for (const l of list) counts[l.programId] = (counts[l.programId] || 0) + 1;
@@ -472,6 +477,7 @@ export async function updateLicense(c, [, id]) {
   const cfg = PRODUCTS[lic.slug];
   const contact = cleanContact(b, lic);
   const terms = cleanTerms(cfg, b, { limits: parseJsonSafe(lic.limits_json, {}), modules: parseJsonSafe(lic.modules_json, []) });
+  if (isTrial(lic)) terms.limits.deneme = 1;   // V3.11: düzenleme deneme işaretini kaldırmaz (satın alma = süreyi uzat)
   await run(c.env, 'UPDATE licenses SET customer = ?, email = ?, phone = ?, note = ?, max_devices = ?, limits_json = ?, modules_json = ?, updated_at = ? WHERE id = ?',
     contact.customer, contact.email, contact.phone, contact.note, contact.maxDevices, JSON.stringify(terms.limits), JSON.stringify(terms.modules), c.t, lic.id);
   const limitText = cfg.limits.map((l) => `${terms.limits[l.key]} ${l.label.replace(' sınırı', '').toLocaleLowerCase('tr')}`).join(' · ');
@@ -490,6 +496,12 @@ export async function extendLicense(c, [, id]) {
   if (endsAt - c.t > 5 * 366 * 86400) return fail(400, 'Bitiş en fazla 5 yıl sonrası olabilir.');
   await run(c.env, 'UPDATE licenses SET ends_at = ?, updated_at = ? WHERE id = ?', endsAt, c.t, lic.id);
   await event(c.env, lic.id, 'Süre uzatıldı', `${dateTR(lic.ends_at)} → ${dateTR(endsAt)}`, c.cl);
+  if (isTrial(lic)) {   // V3.11: deneme satın alındı → deneme işareti kalkar (program "Deneme" uyarısını bırakır)
+    const lim = parseJsonSafe(lic.limits_json || '{}', {});
+    delete lim.deneme;
+    await run(c.env, 'UPDATE licenses SET limits_json = ? WHERE id = ?', JSON.stringify(lim), lic.id);
+    await event(c.env, lic.id, 'Satın alındı', 'Deneme lisansı ücretli lisansa çevrildi', c.cl);
+  }
   await audit(c, 'Lisans', `${lic.customer} · ${lic.program} süresi ${dateTR(endsAt)} tarihine uzatıldı`);
   return json({ ok: true, ends: dateTR(endsAt) });
 }

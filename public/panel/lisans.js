@@ -82,7 +82,7 @@
       }
       acts.append(h('a', { class: 'btn btn-sm', href: '#lisans-' + l.id }, 'Detay'));
       return h('tr', {},
-        h('td', {}, h('b', { text: l.customer }), l.email ? h('span', { class: 'sub', text: l.email }) : null),
+        h('td', {}, h('b', { text: l.customer }), l.trial ? h('span', { class: 'pill pill-info', text: 'Deneme' }) : null, l.email ? h('span', { class: 'sub', text: l.email }) : null),
         h('td', { text: l.program }),
         h('td', { class: 'mono nowrap', text: l.key }),
         h('td', {}, h('span', { text: 'Yıllık' }), h('span', { class: 'sub', text: l.ends })),

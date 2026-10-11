@@ -23,6 +23,7 @@ import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfse
 import { handlePdksApi, UPDATE_PATH } from './pdks-updates.js';
 import { listSupport, answerSupport, retrySupportMail, testSupportMail } from './destek.js';
 import { listTunnels, closeTunnel, saveCfConfig, deleteCfConfig, closeTunnelsOfLicense } from './tunel.js';
+import { handleTrial } from './deneme.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -942,6 +943,8 @@ export async function handlePanel(request, env) {
     if (!staticPage) env = await prepareEnv(env);
     if (url.pathname.startsWith('/indir/')) return secure(await handleDownload(request, env, url, cl), CSP_DL);
     // Müşteri programlarının lisans API'si (Access dışında, kendi deneme sınırıyla)
+    // V3.11: 7 günlük deneme (programın ilk kurulum ekranı); anahtar yalnız e-postayla gider
+    if (url.pathname === '/lisans/api/trial' && request.method === 'POST') return secure(await handleTrial(request, env, cl, now()), CSP_PANEL);
     if (url.pathname.startsWith('/lisans/api/update-')) {
       return secure(await handleUpdateApi(request, env, url, cl), CSP_PANEL);
     }
