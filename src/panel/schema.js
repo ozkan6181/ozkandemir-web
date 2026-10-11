@@ -1,7 +1,7 @@
 // ozkandemir.net — Veritabanı şeması (migrations/*.sql ile aynı; tests/test-config.mjs eşitliği denetler)
 // Panel ilk açıldığında bu ifadeler tek işlemde (batch) çalıştırılır; tümü "IF NOT EXISTS" olduğundan tekrar çalışması güvenlidir.
 // Bu dosya elle düzenlenmez: node scripts/build-schema.mjs
-export const SCHEMA_VERSION = '5';
+export const SCHEMA_VERSION = '6';
 export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS admin (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  pass_changed_at INTEGER NOT NULL,\n  totp_enc TEXT NOT NULL,\n  totp_last_step INTEGER NOT NULL DEFAULT 0,\n  totp_pending_enc TEXT,\n  updated_at INTEGER NOT NULL\n)",
   "CREATE TABLE IF NOT EXISTS backup_codes (\n  code_hash TEXT PRIMARY KEY,\n  used_at INTEGER\n)",
@@ -38,4 +38,8 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS support_questions (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  program TEXT NOT NULL,                 -- NİS PDKS\n  customer TEXT NOT NULL,                -- lisanstaki müşteri adı\n  license_ref TEXT,                      -- eski lisans kimliği ya da panel lisans no\n  license_state TEXT,                    -- active | expired | suspended | deactivated\n  machine TEXT,\n  host TEXT,\n  app_version TEXT,\n  user_type TEXT,                        -- personel | yonetici\n  lang TEXT,\n  page TEXT,\n  search TEXT,\n  question TEXT NOT NULL,\n  contact TEXT,\n  asked_at TEXT,                         -- programdaki soru zamanı (yerel saat)\n  dedupe TEXT NOT NULL UNIQUE,           -- aynı sorunun yeniden gönderimi tek kayıt olur\n  received_at INTEGER NOT NULL,\n  mail_state TEXT NOT NULL DEFAULT 'pending',  -- pending | sent | failed\n  mail_error TEXT,\n  mail_tries INTEGER NOT NULL DEFAULT 0,\n  answered_at INTEGER\n)",
   "CREATE INDEX IF NOT EXISTS idx_support_open ON support_questions(answered_at, received_at)",
   "CREATE INDEX IF NOT EXISTS idx_support_mail ON support_questions(mail_state)",
+  "CREATE TABLE IF NOT EXISTS tunnels (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  owner TEXT NOT NULL,                   -- lic:<eski lisans kimliği> | odl:<panel lisans no>\n  license_id INTEGER,                    -- panel lisansıysa licenses.id (iptalde tüneller kapanır)\n  customer TEXT NOT NULL,\n  machine TEXT NOT NULL,\n  host TEXT,                             -- müşteri sunucusunun adı\n  name TEXT NOT NULL UNIQUE,             -- kitapsec\n  hostname TEXT NOT NULL UNIQUE,         -- kitapsec-pdks.ozkandemir.net\n  tunnel_id TEXT NOT NULL,\n  dns_record_id TEXT,\n  port INTEGER,\n  created_at INTEGER NOT NULL,\n  updated_at INTEGER NOT NULL,\n  UNIQUE (owner, machine)\n)",
+  "CREATE INDEX IF NOT EXISTS idx_tunnels_license ON tunnels(license_id)",
+  "CREATE TABLE IF NOT EXISTS tunnel_log (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  owner TEXT NOT NULL,\n  at INTEGER NOT NULL,\n  action TEXT NOT NULL,                  -- create | delete | close\n  detail TEXT\n)",
+  "CREATE INDEX IF NOT EXISTS idx_tunnel_log ON tunnel_log(owner, at)",
 ];

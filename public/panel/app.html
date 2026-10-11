@@ -63,6 +63,21 @@
         <div id="supportList"></div>
       </section>
 
+      <section class="card" id="adresler">
+        <div class="card-head">
+          <div><h2>Uzaktan erişim adresleri</h2><p class="muted small" id="tunSub">NİS PDKS müşterilerinin <b>&lt;ad&gt;-pdks.ozkandemir.net</b> adresleri (Cloudflare Tunnel).</p></div>
+        </div>
+        <div id="tunSetup" hidden>
+          <div class="alert alert-warn" role="status">Müşteriler programdan adres alabilsin diye bir kez Cloudflare API anahtarı girin. Cloudflare › My Profile › API Tokens › Create Token › Custom token; izinler: <b>Account › Cloudflare Tunnel › Edit</b> ve <b>Zone › DNS › Edit</b> (yalnız ozkandemir.net). Anahtar şifreli saklanır.</div>
+          <form id="tunForm" class="modal-body" novalidate>
+            <label>Cloudflare API anahtarı<input id="tunToken" type="password" autocomplete="off" spellcheck="false"></label>
+            <label>Doğrulama kodu (6 hane)<input id="tunCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+            <div class="btn-row"><button type="submit" class="btn btn-gold btn-sm">Doğrula ve kaydet</button></div>
+          </form>
+        </div>
+        <div id="tunList"></div>
+      </section>
+
       <section class="card">
         <div class="card-head">
           <h2>Yüklü programlar</h2>

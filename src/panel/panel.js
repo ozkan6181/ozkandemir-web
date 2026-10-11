@@ -22,6 +22,7 @@ import { runWatch } from './watch.js';
 import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfsetup.js';
 import { handlePdksApi, UPDATE_PATH } from './pdks-updates.js';
 import { listSupport, answerSupport, retrySupportMail, testSupportMail } from './destek.js';
+import { listTunnels, closeTunnel, saveCfConfig, deleteCfConfig, closeTunnelsOfLicense } from './tunel.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -804,7 +805,7 @@ const ROUTES = [
   ['POST', /^\/licenses\/(\d+)\/extend$/, withCode(extendLicense)],
   ['POST', /^\/licenses\/(\d+)\/suspend$/, suspendLicense],
   ['POST', /^\/licenses\/(\d+)\/resume$/, withCode(resumeLicense)],
-  ['POST', /^\/licenses\/(\d+)\/revoke$/, revokeLicense],
+  ['POST', /^\/licenses\/(\d+)\/revoke$/, revokeAndCloseTunnels],
   ['POST', /^\/licenses\/(\d+)\/devices\/(\d+)\/remove$/, removeDevice],
   ['POST', /^\/licenses\/(\d+)\/offline$/, withCode(offlineActivate)],
   ['POST', /^\/versions\/(\d+)\/release$/, releasePublish],
@@ -821,7 +822,21 @@ const ROUTES = [
   ['GET', /^\/support$/, listSupport],
   ['POST', /^\/support\/(\d+)\/answered$/, answerSupport],
   ['POST', /^\/support\/test-mail$/, testSupportMail],
+  ['GET', /^\/tunnels$/, listTunnels],
+  ['POST', /^\/tunnels\/(\d+)\/close$/, closeTunnel],
+  ['POST', /^\/tunnel-config$/, withCode(saveCfConfig)],
+  ['DELETE', /^\/tunnel-config$/, withCode(deleteCfConfig)],
 ];
+
+// Lisans iptal edilince o lisansın uzaktan erişim adresleri de kapatılır (V3.10)
+async function revokeAndCloseTunnels(c, m) {
+  const res = await revokeLicense(c, m);
+  if (res.status < 300) {
+    const n = await closeTunnelsOfLicense(c.env, m[1]).catch(() => 0);
+    if (n) await audit(c, 'Uzaktan erişim', `İptal edilen lisansın ${n} adresi kapatıldı`);
+  }
+  return res;
+}
 
 async function api(c) {
   const { req, url, env } = c;

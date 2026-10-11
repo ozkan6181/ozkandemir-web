@@ -242,7 +242,7 @@ await test('Acil durdurma ve henüz etkin olmayan işlemler', async () => {
   const r = await call({ ...base, a: 'check', version: 'V1.30.2', license: await legacyLicense({}) });
   assert.equal(r.data.auto_stop, true);
   delete env.PDKS_AUTO_STOP;
-  for (const a of ['tunnel_create', 'tunnel_delete', 'olmayan']) {
+  for (const a of ['olmayan', 'tunnel_list']) {
     const x = await call({ ...base, a, license: await legacyLicense({}) });
     assert.equal(x.status, 404); assert.equal(x.data.ok, false);
   }

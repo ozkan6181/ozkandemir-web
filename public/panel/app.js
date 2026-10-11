@@ -135,7 +135,7 @@
       if (view === 'guvenlik') loadSecurity();
       else loadOverview();
     }
-    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek')) {
+    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek' || hash === 'adresler')) {
       const el = document.getElementById(hash);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
@@ -159,6 +159,7 @@
     loadLinks();
     loadRenewals();
     loadSupport();
+    loadTunnels();
   }
 
   // ---------- Destek soruları (NİS PDKS › Yardım › Cevabımı bulamadım) ----------
@@ -212,6 +213,41 @@
       toast(`Deneme e-postası ${r.to} adresine gönderildi (${r.via}).${r.retried ? ` Bekleyen ${r.retried} soru da gönderildi.` : ''}`);
     } catch (e) { toast(e.message, true); }
     b.disabled = false; loadSupport();
+  });
+
+  // ---------- Uzaktan erişim adresleri (NİS PDKS › Cloudflare Tunnel) ----------
+  async function loadTunnels() {
+    let r;
+    try { r = await call('/tunnels'); } catch { return; }
+    $('#tunSetup').hidden = r.ready;
+    $('#tunSub').textContent = r.ready
+      ? `${r.list.length} adres · Cloudflare anahtarı: ${r.mask}${r.from === 'env' ? ' (gizli değişken)' : ''}`
+      : 'Henüz Cloudflare anahtarı girilmedi; müşteriler adres alamaz.';
+    const rows = r.list.map((t) => h('div', { class: 'renew' },
+      h('div', {},
+        h('b', { text: t.customer }),
+        h('small', { text: `${t.hostname} · ${t.host || '-'} · port ${t.port || '-'} · ${t.legacy ? 'eski lisans' : 'panel lisansı #' + t.license_id} · kuruldu ${t.created}` })),
+      h('div', { class: 'btn-row' },
+        h('a', { class: 'btn btn-sm', href: 'https://' + t.hostname, target: '_blank', rel: 'noopener noreferrer' }, 'Aç'),
+        h('button', { type: 'button', class: 'btn btn-sm btn-navy', onclick: async (ev) => {
+          if (!window.confirm(`${t.hostname} kapatılsın mı? Müşteri bu adresle erişemez (Tailscale / yerel ağ etkilenmez).`)) return;
+          ev.currentTarget.disabled = true;
+          try { await call(`/tunnels/${t.id}/close`, { method: 'POST', body: {} }); toast('Adres kapatıldı.'); } catch (e) { toast(e.message, true); }
+          loadTunnels();
+        } }, 'Kapat'))));
+    $('#tunList').replaceChildren(...(rows.length ? rows : [h('p', { class: 'muted small', text: r.ready ? 'Henüz adres alınmadı.' : '' })]));
+  }
+  $('#tunForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.submitter || $('#tunForm button');
+    btn.disabled = true;
+    try {
+      await call('/tunnel-config', { method: 'POST', body: { token: $('#tunToken').value.trim(), code: $('#tunCode').value.trim() } });
+      $('#tunToken').value = ''; $('#tunCode').value = '';
+      toast('Cloudflare anahtarı doğrulandı ve kaydedildi.');
+      loadTunnels();
+    } catch (e) { toast(e.message, true); }
+    btn.disabled = false;
   });
 
   // ---------- Yenileme takibi ----------

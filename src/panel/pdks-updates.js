@@ -17,11 +17,13 @@
 // Yalnız panelde "Yayınla" denmiş sürümler zincire girer (releases tablosu; /lisans/api/update-check ile aynı kural).
 // support_question — Yardım › "Cevabımı bulamadım" soruları (destek.js): kaydedilir ve info@ozkandemir.net'e gider.
 //   Süresi dolmuş / askıdaki lisans da soru sorabilir (yenileme için destek gerekebilir); iptal edilmiş lisans soramaz.
-// tunnel_create, tunnel_delete sonraki sürümde; şimdilik "henüz etkin değil" döner.
+// tunnel_create / tunnel_delete — uzaktan erişim adresi <ad>-pdks.ozkandemir.net (tunel.js). Adres almak için lisans
+//   etkin olmalı; kaldırma süresi dolmuş / askıdaki lisansla da yapılabilir.
 import { now } from './security.js';
 import { json, first, all, run, readJson } from './common.js';
 import { verifyToken, signingPublicKey } from './license.js';
 import { receiveSupportQuestion } from './destek.js';
+import { handleTunnelAction } from './tunel.js';
 
 export const UPDATE_PATH = '/pdks-api/api.php';
 // NİS PDKS satıcı genel anahtarı (Ed25519, ham 32 bayt, base64). Programdaki app/commercial/keys.py ile aynı.
@@ -82,7 +84,8 @@ export async function verifyLegacyLicense(text, vendorPub = VENDOR_PUBKEY) {
     if (b.ent !== data.id || b.kid !== c.kid || !b.machine) return null;
     machine = b.machine;
   }
-  return { kind: 'license', id: String(data.id || ''), customer: String(data.customer), updatesUntil: data.updates_until || null, machine };
+  return { kind: 'license', id: String(data.id || ''), customer: String(data.customer), updatesUntil: data.updates_until || null,
+    validUntil: data.valid_until || null, machine };
 }
 
 // Panel lisansı (lisans.json metni) → {kind, lid, customer, device} ya da {error}
@@ -102,7 +105,7 @@ async function verifyPanelLicense(env, odlText, t) {
   return { kind: 'odl', lid: lic.id, customer: lic.customer, device: payload.device, activationId: act.id, activationVersion: act.app_version };
 }
 
-async function identify(env, body, t) {
+export async function identify(env, body, t) {
   if (body.odl) return verifyPanelLicense(env, body.odl, t);
   if (body.license) {
     const l = await verifyLegacyLicense(body.license, env.PDKS_VENDOR_PUBKEY || VENDOR_PUBKEY);
@@ -218,6 +221,16 @@ export async function handlePdksApi(request, env) {
     const who = await identify(env, body, t);
     if (who.error && !['expired', 'suspended', 'deactivated'].includes(who.status)) return no(403, who.error);
     return receiveSupportQuestion(env, body, { ...who, kind: who.kind || 'odl', licenseState: who.status || 'active' }, t);
+  }
+  if (a === 'tunnel_create' || a === 'tunnel_delete') {
+    if (!env.DB) return no(503, 'Hizmet hazır değil.');
+    const who = await identify(env, body, t);
+    const softOk = a === 'tunnel_delete' && ['expired', 'suspended', 'deactivated'].includes(who.status);
+    if (who.error && !softOk) return no(403, who.error);
+    if (a === 'tunnel_create' && who.kind === 'license' && who.validUntil && who.validUntil < isoDate(t)) {
+      return no(403, 'Lisans süresi dolmuş; adres alınamaz.');
+    }
+    return handleTunnelAction(env, a, body, { ...who, kind: who.kind || 'odl' }, t);
   }
   if (!['check', 'download'].includes(a)) return no(404, 'Bu işlem henüz etkin değil.');
   if (!env.DB || !env.FILES) return no(503, 'Güncelleme hizmeti hazır değil.');
