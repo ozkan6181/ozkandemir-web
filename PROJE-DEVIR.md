@@ -745,3 +745,8 @@ Tüm sürümler ayrı satırda saklanır; eski sürümler sonradan yüklenebilir
 
 ## 20. V3.9.0 — NİS PDKS güncelleme ve destek kanalı (11.10.2026)
 `/pdks-api/api.php` (PDKS sohbetinden gelen yama; V3.8 kanal yamasının yerine geçer). İşlemler: `check`, `download` (yalnız panelde YAYINLANMIŞ `PDKS_Vx.y.z_guncelleme.zip` paketleri, zincir zip içindeki manifest'ten), `support_question` (D1 `support_questions` + info@ozkandemir.net'e e-posta; panelde "Destek soruları" kartı). Eski `.lic` ve panel (ODL1) lisansları kabul edilir. E-posta **Resend** (ücretsiz paket) ile gider: Worker gizli değişkeni `RESEND_API_KEY` (yalnız gönderme yetkili, ozkandemir.net alan adına kısıtlı anahtar), gönderen `destek@ozkandemir.net`. Resend DNS kayıtları yalnız `send` alt alan adı ve `resend._domainkey` üzerindedir; kök MX/SPF kayıtlarına (Google) dokunulmaz. Anahtar yoksa `SUPPORT_MAIL` bağlaması (Cloudflare Email Service, Workers Paid gerekir) denenir; ikisi de yoksa sorular panelde bekler ve günlük zamanlanmış görevle yeniden denenir.
+
+### Kurulum durumu (11.10.2026)
+- Resend: ozkandemir.net doğrulandı (eu-west-1). DNS: `resend._domainkey` TXT, `rsend` ve `send` CNAME (proxy kapalı), `_dmarc` TXT `p=none`. Kök MX (Google ×6) ve SPF değişmedi. `RESEND_API_KEY` gizli değişkende; deneme e-postası ulaştı (Panel › Destek soruları › "Deneme e-postası gönder").
+- Zero Trust Free açıldı (takım: dry-meadow-40cb.cloudflareaccess.com). Access uygulaması "ozkandemir.net Yönetim Paneli" (ozkandemir.net/panel + www), tek politika "Yalnızca yönetici" (e-posta kodu).
+- `PANEL_ENC_KEY` ve `LICENSE_SIGNING_KEY` Worker gizli değişkenlerinde; kurtarma yedeği kullanıcıda (çevrimdışı).
