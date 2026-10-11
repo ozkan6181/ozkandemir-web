@@ -9,7 +9,7 @@
 // Gönderilemeyen e-postalar her yeni soruda ve günlük zamanlanmış görevde yeniden denenir; panelde "Destek soruları"
 // kartında her durumda görünür.
 // Personel / puantaj verisi gelmez: yalnız soru metni, isteğe bağlı iletişim bilgisi ve hangi ekrandan sorulduğu.
-import { json, fail, first, all, run, readJson } from './common.js';
+import { json, fail, first, all, run, readJson, audit } from './common.js';
 
 export const SUPPORT = {
   TO: 'info@ozkandemir.net',
@@ -168,4 +168,28 @@ export async function answerSupport(c, [, id]) {
   const reopen = b.reopen === true;
   await run(c.env, 'UPDATE support_questions SET answered_at = ? WHERE id = ?', reopen ? null : c.t, q.id);
   return json({ ok: true });
+}
+
+// Panel: deneme e-postası (alıcı sabit; dakikada en fazla bir kez). Bekleyen soruları da hemen yeniden dener.
+export async function testSupportMail(c) {
+  const tr = mailTransport(c.env);
+  if (!tr) return fail(400, 'E-posta gönderimi kurulmadı: Cloudflare\'de RESEND_API_KEY gizli değişkeni yok.');
+  const last = await first(c.env, "SELECT value FROM settings WHERE name = 'support_test_at'");
+  if (last && c.t - Number(last.value) < 60) return fail(429, 'Bir dakika içinde tekrar deneyin.');
+  await run(c.env, "INSERT INTO settings (name, value, updated_at) VALUES ('support_test_at', ?, ?) ON CONFLICT(name) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at", String(c.t), c.t);
+  const to = c.env.SUPPORT_EMAIL || SUPPORT.TO;
+  try {
+    await tr.send({
+      from: { email: c.env.SUPPORT_FROM || SUPPORT.FROM, name: 'NİS PDKS Destek' },
+      to,
+      subject: '[NİS PDKS Destek] Deneme e-postası',
+      text: `Bu bir deneme e-postasıdır (${fmt(c.t)}).\n\nozkandemir.net panelinden gönderildi. Bu e-posta geldiyse programlardan gelen destek soruları da ${to} adresine gelecek.\n\nGönderim: ${tr.name}`,
+    });
+  } catch (e) {
+    return fail(502, `Gönderilemedi: ${clip(`${e && e.code ? e.code + ' — ' : ''}${e && e.message ? e.message : e}`, 200)}`);
+  }
+  let retried = 0;
+  try { retried = await retrySupportMail(c.env, 20); } catch { /* yok say */ }
+  await audit(c, 'Destek', `Deneme e-postası gönderildi (${tr.name} → ${to})`);
+  return json({ ok: true, to, via: tr.name, retried });
 }

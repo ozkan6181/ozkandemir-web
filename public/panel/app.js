@@ -176,6 +176,7 @@
     $('#supportSub').textContent = r.open
       ? `${r.open} yanıt bekleyen soru · e-posta: ${r.to}`
       : `Yanıt bekleyen soru yok · yeni sorular ${r.to} adresine de gelir.`;
+    if (r.mailVia) $('#supportSub').textContent += ` (${r.mailVia})`;
     $('#supportAll').textContent = SUP_STATE.all ? 'Yalnız bekleyenler' : 'Yanıtlananları da göster';
     if (!r.list.length) {
       $('#supportList').replaceChildren(h('p', { class: 'muted small', text: SUP_STATE.all ? 'Henüz soru gelmedi.' : 'Bekleyen soru yok.' }));
@@ -204,6 +205,14 @@
     }));
   }
   $('#supportAll').addEventListener('click', () => { SUP_STATE.all = !SUP_STATE.all; loadSupport(); });
+  $('#supportTest').addEventListener('click', async (ev) => {
+    const b = ev.currentTarget; b.disabled = true;
+    try {
+      const r = await call('/support/test-mail', { method: 'POST', body: {} });
+      toast(`Deneme e-postası ${r.to} adresine gönderildi (${r.via}).${r.retried ? ` Bekleyen ${r.retried} soru da gönderildi.` : ''}`);
+    } catch (e) { toast(e.message, true); }
+    b.disabled = false; loadSupport();
+  });
 
   // ---------- Yenileme takibi ----------
   function waNumber(phone) {

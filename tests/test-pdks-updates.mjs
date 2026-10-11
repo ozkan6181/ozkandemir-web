@@ -417,5 +417,21 @@ await test('Panel: destek soruları listelenir, yanıtlandı işaretlenir; oturu
   assert.equal((await panel('POST', '/panel/api/support/99999/answered', {})).status, 404);
 });
 
+await test('Panel: deneme e-postası sabit adrese gider, dakikada bir; kurulum yoksa açık hata', async () => {
+  const saved = env.SUPPORT_MAIL;
+  delete env.SUPPORT_MAIL;
+  let r = await panel('POST', '/panel/api/support/test-mail', {});
+  assert.equal(r.status, 400); assert.match(r.data.error, /RESEND_API_KEY/);
+  env.SUPPORT_MAIL = mailOk;
+  const n = sent.length;
+  r = await panel('POST', '/panel/api/support/test-mail', { to: 'baska@x.y' });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.equal(sent.length, n + 1);
+  assert.equal(sent.at(-1).to, 'info@ozkandemir.net');
+  assert.match(sent.at(-1).subject, /Deneme/);
+  assert.equal((await panel('POST', '/panel/api/support/test-mail', {})).status, 429);
+  env.SUPPORT_MAIL = saved;
+});
+
 console.log(out.join('\n'));
 console.log(`\n${passed} test geçti.`);

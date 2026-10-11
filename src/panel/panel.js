@@ -21,7 +21,7 @@ import { getPayroll, previewPayroll, publishPayroll, restorePayroll, dismissAler
 import { runWatch } from './watch.js';
 import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfsetup.js';
 import { handlePdksApi, UPDATE_PATH } from './pdks-updates.js';
-import { listSupport, answerSupport, retrySupportMail } from './destek.js';
+import { listSupport, answerSupport, retrySupportMail, testSupportMail } from './destek.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -820,6 +820,7 @@ const ROUTES = [
   ['POST', /^\/security\/cloudflare$/, cloudflareSetupRoute],
   ['GET', /^\/support$/, listSupport],
   ['POST', /^\/support\/(\d+)\/answered$/, answerSupport],
+  ['POST', /^\/support\/test-mail$/, testSupportMail],
 ];
 
 async function api(c) {
