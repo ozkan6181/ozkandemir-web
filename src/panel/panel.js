@@ -12,7 +12,7 @@ import {
 } from './common.js';
 import {
   handleLicenseApi, licenseProducts, listLicenses, createLicense, getLicense, updateLicense, extendLicense,
-  suspendLicense, resumeLicense, revokeLicense, removeDevice, offlineActivate,
+  suspendLicense, resumeLicense, revokeLicense, removeDevice, offlineActivate, bundlePartners,
 } from './license.js';
 import { prepareEnv } from './bootstrap.js';
 import { signingPublicKey, isoDateTR, dateTR, LIC } from './license.js';
@@ -833,7 +833,11 @@ const ROUTES = [
 async function revokeAndCloseTunnels(c, m) {
   const res = await revokeLicense(c, m);
   if (res.status < 300) {
-    const n = await closeTunnelsOfLicense(c.env, m[1]).catch(() => 0);
+    let n = await closeTunnelsOfLicense(c.env, m[1]).catch(() => 0);
+    // V3.12: paketle birlikte iptal edilen lisansların adresleri de kapanır
+    for (const p of await bundlePartners(c.env, m[1]).catch(() => [])) {
+      if (p.status === 'revoked') n += await closeTunnelsOfLicense(c.env, p.id).catch(() => 0);
+    }
     if (n) await audit(c, 'Uzaktan erişim', `İptal edilen lisansın ${n} adresi kapatıldı`);
   }
   return res;

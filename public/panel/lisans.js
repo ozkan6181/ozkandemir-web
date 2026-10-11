@@ -82,7 +82,7 @@
       }
       acts.append(h('a', { class: 'btn btn-sm', href: '#lisans-' + l.id }, 'Detay'));
       return h('tr', {},
-        h('td', {}, h('b', { text: l.customer }), l.trial ? h('span', { class: 'pill pill-info', text: 'Deneme' }) : null, l.email ? h('span', { class: 'sub', text: l.email }) : null),
+        h('td', {}, h('b', { text: l.customer }), l.trial ? h('span', { class: 'pill pill-info', text: 'Deneme' }) : null, l.bundle ? h('span', { class: 'pill pill-ok', text: 'Paket' }) : null, l.email ? h('span', { class: 'sub', text: l.email }) : null),
         h('td', { text: l.program }),
         h('td', { class: 'mono nowrap', text: l.key }),
         h('td', {}, h('span', { text: 'Yıllık' }), h('span', { class: 'sub', text: l.ends })),
@@ -126,9 +126,18 @@
     $('#licProducts').replaceChildren(...r.products.map((p, i) => h('label', { class: 'prod' },
       h('input', { type: 'radio', name: 'licProduct', value: String(p.programId), checked: i === 0, onchange: renderTerms }),
       h('b', { text: p.name }), h('small', { text: p.prefix + '-…' }))));
+    // V3.12: NİS PDKS + Yıllık İzin paketi
+    if (!$('#licBundleRow')) {
+      const row = h('label', { class: 'check', id: 'licBundleRow', hidden: true },
+        h('input', { type: 'checkbox', id: 'licBundle', onchange: renderTerms }),
+        h('span', {}, h('b', { text: 'NİS PDKS + Yıllık İzin paketi' }),
+          h('small', { class: 'muted', text: ' — aynı müşteriye IZIN-… anahtarı da üretilir; süre uzatma, askıya alma ve iptal ikisine birlikte uygulanır.' })));
+      $('#licProducts').after(row);
+    }
     renderTerms();
     newLoaded = true;
   }
+  const bundleOn = () => { const p = selectedProduct(); return !!(p && p.slug === 'nis-pdks' && $('#licBundle') && $('#licBundle').checked && !$('#licBundleRow').hidden); };
   const selectedProduct = () => {
     const el = document.querySelector('input[name=licProduct]:checked');
     return ls.products.find((p) => String(p.programId) === (el && el.value));
@@ -138,8 +147,11 @@
     if (!p) return;
     $('#licLimits').replaceChildren(...p.limits.map((l) => h('label', { class: 'field' }, l.label,
       h('input', { class: 'input', type: 'number', min: 0, max: 1000000, step: 1, value: String(l.def), dataset: { limit: l.key } }))));
+    const br = $('#licBundleRow');
+    if (br) br.hidden = !(p.slug === 'nis-pdks' && ls.products.some((x) => x.slug === 'yillik-izin'));
+    const pk = bundleOn();
     $('#licModules').replaceChildren(...(p.modules.length ? p.modules.map((m) => h('label', { class: 'check' },
-      h('input', { type: 'checkbox', checked: !!m.def, dataset: { module: m.key } }), m.label)) : [h('span', { class: 'muted small', text: 'Bu programın ek modülü yok.' })]));
+      h('input', { type: 'checkbox', checked: !!m.def || (pk && m.key === 'izin_entegrasyon'), disabled: pk && m.key === 'izin_entegrasyon', dataset: { module: m.key } }), m.label)) : [h('span', { class: 'muted small', text: 'Bu programın ek modülü yok.' })]));
     const dl = $('#licWithDl');
     dl.disabled = !p.latest;
     dl.checked = !!p.latest;
@@ -163,11 +175,11 @@
         programId: p.programId, customer: $('#licCustomer').value, email: $('#licEmail').value, phone: $('#licPhone').value,
         starts: $('#licStarts').value, ends: $('#licEnds').value, maxDevices: Number($('#licDevices').value),
         limits, modules, note: $('#licNote').value, withDownload: $('#licWithDl').checked && !$('#licWithDl').disabled,
-        code: $('#licCode').value.trim(),
+        code: $('#licCode').value.trim(), bundle: bundleOn() ? 'pdks-izin' : undefined,
       } });
       showResult(r, $('#licEmail').value, $('#licPhone').value);
       $('#licCustomer').value = ''; $('#licEmail').value = ''; $('#licPhone').value = ''; $('#licNote').value = ''; $('#licCode').value = '';
-      A().toast('Lisans oluşturuldu.');
+      A().toast(r.bundle ? 'Paket lisansları oluşturuldu.' : 'Lisans oluşturuldu.');
     } catch (err) {
       A().msg($('#licMsg'), err.message);
     } finally {
@@ -181,19 +193,28 @@
     t += '\n\nEtkinleştirme: Programın Lisans ekranında anahtarı girip “İnternet ile etkinleştir”e tıklayın.' + SIGN;
     return t;
   }
+  function bundleMessage(r) {
+    const o = r.bundle.partner;
+    let t = `Merhaba,\n\n${r.bundle.label} paketi lisans anahtarlarınız:\n\n${r.program}: ${r.key}\n${o.program}: ${o.key}\n\nGeçerlilik: ${r.starts} – ${r.ends}\nKapsam: ${r.maxDevices} sunucu · ${r.limitText}`;
+    if (r.download) t += `\n\nKurulum dosyası (${r.program} ${r.download.version}): ${r.download.url}\nBu bağlantı size özeldir; ${r.download.expires} tarihine kadar 3 kez kullanılabilir.`;
+    t += `\n\nEtkinleştirme: ${r.program} anahtarını NİS PDKS'nin Lisans ekranına, ${o.program} anahtarını ${o.program} programının lisans ekranına girin.` + SIGN;
+    return t;
+  }
   function showResult(r, email, phone) {
     const box = $('#licResult');
-    const text = licenseMessage(r);
+    const text = r.bundle ? bundleMessage(r) : licenseMessage(r);
     box.replaceChildren(
       h('div', { class: 'ok-head' }, h('span', {}, icon('check')), h('b', { text: 'Lisans hazır' })),
       h('div', { class: 'bigkey', text: r.key }),
+      r.bundle ? h('div', { class: 'bigkey', text: r.bundle.partner.key }) : null,
+      r.bundle ? h('small', { class: 'muted', text: `${r.bundle.label} paketi: ${r.program} + ${r.bundle.partner.program} (${r.bundle.partner.limitText})` }) : null,
       h('dl', { class: 'dl2' },
         h('dt', { text: 'Müşteri' }), h('dd', { text: r.customer }),
         h('dt', { text: 'Program' }), h('dd', { text: r.program + (r.download ? ` · son sürüm ${r.download.version}` : '') }),
         h('dt', { text: 'Geçerlilik' }), h('dd', { text: `${r.starts} – ${r.ends}` }),
         h('dt', { text: 'Sınırlar' }), h('dd', { text: `${r.maxDevices} sunucu · ${r.limitText}` })),
       r.download ? h('small', { class: 'muted', text: 'Mesaj, kurulum dosyasının indirme linkini de içerir.' }) : null,
-      shareButtons(text, `${r.program} lisans anahtarınız`, email, phone),
+      shareButtons(text, r.bundle ? `${r.bundle.label} lisans anahtarlarınız` : `${r.program} lisans anahtarınız`, email, phone),
       h('a', { class: 'btn btn-sm', href: '#lisans-' + r.id }, 'Lisans detayına git →'));
     box.hidden = false;
     box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -217,11 +238,11 @@
         actions.append(h('button', { type: 'button', class: 'btn btn-green', onclick: () => resumeModal(d, reload) }, 'Yeniden aç'));
       } else {
         const b = h('button', { type: 'button', class: 'btn btn-warn' }, 'Askıya al');
-        A().armed(b, 'Emin misiniz? Askıya al', async () => { await post(`/licenses/${d.id}/suspend`, 'Lisans askıya alındı.'); reload(); });
+        A().armed(b, d.bundle ? 'Emin misiniz? Paket askıya alınır' : 'Emin misiniz? Askıya al', async () => { await post(`/licenses/${d.id}/suspend`, d.bundle ? 'Paketteki lisanslar askıya alındı.' : 'Lisans askıya alındı.'); reload(); });
         actions.append(b);
       }
       const rv = h('button', { type: 'button', class: 'btn btn-danger' }, 'İptal et');
-      A().armed(rv, 'Kalıcı iptal — emin misiniz?', async () => { await post(`/licenses/${d.id}/revoke`, 'Lisans iptal edildi.'); reload(); });
+      A().armed(rv, d.bundle ? 'Paket kalıcı iptal — emin misiniz?' : 'Kalıcı iptal — emin misiniz?', async () => { await post(`/licenses/${d.id}/revoke`, d.bundle ? 'Paketteki lisanslar iptal edildi.' : 'Lisans iptal edildi.'); reload(); });
       actions.append(rv);
     }
 
@@ -276,6 +297,11 @@
       h('section', { class: 'card' },
         h('div', { class: 'keyline' }, h('span', { class: 'bigkey', text: d.key }), copyKey, resend),
         h('div', { class: 'facts' }, facts)),
+      d.bundle ? h('section', { class: 'card' },
+        h('div', { class: 'card-head' }, h('h2', { text: `Paket: ${d.bundle.label}` }), h('small', { class: 'muted', text: 'Süre uzatma, askıya alma, yeniden açma ve iptal paketteki lisanslara birlikte uygulanır.' })),
+        h('div', {}, d.bundle.partners.map((p) => h('div', { class: 'hist' },
+          h('b', { text: p.program }), h('span', { class: 'mono', text: p.mask }), h('span', { text: `bitiş ${p.ends}` }), statePill(p.state, 0),
+          h('a', { class: 'btn btn-sm', href: '#lisans-' + p.id }, 'Detay'))))) : null,
       h('section', { class: 'card' },
         h('div', { class: 'card-head' }, h('h2', { text: 'Etkinleştirilmiş cihazlar' }), h('small', { class: 'muted', text: `${liveDevices.length} / ${d.maxDevices} cihaz kullanımda` })),
         h('div', { class: 'table-wrap' }, h('table', { class: 'tbl wide' },
@@ -316,6 +342,7 @@
   function extendModal(d, done) {
     modalForm('Süre uzat', [
       h('p', { class: 'muted', text: `Mevcut bitiş: ${d.ends}. Yeni süre programa bir sonraki doğrulamada (en geç 7 gün) ya da müşteri “Şimdi doğrula” dediğinde yansır.` }),
+      d.bundle ? h('p', { class: 'muted', text: `Paketteki ${d.bundle.partners.map((p) => p.program).join(', ')} lisansı da aynı tarihe uzatılır.` }) : null,
       h('label', { class: 'field' }, 'Yeni bitiş tarihi', h('input', { class: 'input', type: 'date', id: 'extEnds', value: d.nextYearIso })),
       A().codeField('extCode'),
     ], 'Süreyi uzat', async () => {

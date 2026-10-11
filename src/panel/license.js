@@ -324,7 +324,8 @@ export async function listLicenses(c) {
   const rows = await all(env,
     `SELECT l.*, p.name AS program, p.slug,
       (SELECT COUNT(*) FROM activations a WHERE a.license_id = l.id AND a.removed_at IS NULL) AS devices,
-      (SELECT MAX(last_seen) FROM activations a WHERE a.license_id = l.id AND a.removed_at IS NULL) AS last_seen
+      (SELECT MAX(last_seen) FROM activations a WHERE a.license_id = l.id AND a.removed_at IS NULL) AS last_seen,
+      (SELECT bundle_id FROM license_bundles lb WHERE lb.license_id = l.id) AS bundle_id
      FROM licenses l JOIN programs p ON p.id = l.program_id ORDER BY l.created_at DESC, l.id DESC`);
   const q = String(url.searchParams.get('q') || '').trim().toLocaleLowerCase('tr');
   const prog = Number(url.searchParams.get('program') || 0);
@@ -333,7 +334,7 @@ export async function listLicenses(c) {
     id: l.id, programId: l.program_id, program: l.program, prefix: PRODUCTS[l.slug] ? PRODUCTS[l.slug].prefix : '',
     customer: l.customer, key: l.key_mask, starts: dateTR(l.starts_at), ends: dateTR(l.ends_at), endsIn: l.ends_at - t,
     devices: l.devices, maxDevices: l.max_devices, lastSeen: l.last_seen, lastSeenAgo: l.last_seen ? t - l.last_seen : null,
-    state: displayState(l, t, l.devices, l.last_seen), email: l.email, phone: l.phone, trial: isTrial(l),
+    state: displayState(l, t, l.devices, l.last_seen), email: l.email, phone: l.phone, trial: isTrial(l), bundle: !!l.bundle_id,
   }));
   const counts = {};
   for (const l of list) counts[l.programId] = (counts[l.programId] || 0) + 1;
@@ -384,22 +385,11 @@ function cleanContact(b, base = {}) {
   return { customer, email, phone, note, maxDevices };
 }
 
-export async function createLicense(c) {
-  const { env, t } = c;
-  const b = await readJson(c.req);
-  const prog = await first(env, 'SELECT * FROM programs WHERE id = ?', Number(b.programId));
-  if (!prog || !PRODUCTS[prog.slug]) return fail(400, 'Lisanslanabilir bir program seçin.');
-  const cfg = PRODUCTS[prog.slug];
-  const contact = cleanContact(b);
-  const terms = cleanTerms(cfg, b);
-  const startsIso = b.starts || isoDateTR(t);
-  const startsAt = parseDateTR(startsIso, false);
-  if (!startsAt) return fail(400, 'Başlangıç tarihi geçersiz.');
-  const endsAt = parseDateTR(b.ends || addYearISO(startsIso), true);
-  if (!startsAt || !endsAt) return fail(400, 'Tarih geçersiz.');
-  if (endsAt <= startsAt) return fail(400, 'Bitiş tarihi başlangıçtan sonra olmalı.');
-  if (endsAt - startsAt > 5 * 366 * 86400) return fail(400, 'Lisans süresi en fazla 5 yıl olabilir.');
-  if (!env.PANEL_ENC_KEY) return fail(503, 'PANEL_ENC_KEY tanımlı değil.');
+// V3.12: "NİS PDKS + Yıllık İzin" paketi
+export const BUNDLE = { kind: 'pdks-izin', label: 'NİS PDKS + Yıllık İzin', main: 'nis-pdks', other: 'yillik-izin',
+  mainModule: 'izin_entegrasyon', otherModule: 'pdks_entegrasyon' };
+
+async function insertLicense(env, prog, cfg, contact, terms, startsAt, endsAt, t) {
   let key, hash;
   for (let i = 0; i < 5; i++) {
     key = generateKey(cfg.prefix);
@@ -410,10 +400,63 @@ export async function createLicense(c) {
     'INSERT INTO licenses (program_id, key_hash, key_enc, key_mask, customer, email, phone, starts_at, ends_at, max_devices, limits_json, modules_json, note, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'active\', ?, ?)',
     prog.id, hash, await encryptText(env.PANEL_ENC_KEY, key), maskKey(key), contact.customer, contact.email, contact.phone,
     startsAt, endsAt, contact.maxDevices, JSON.stringify(terms.limits), JSON.stringify(terms.modules), contact.note, t, t);
-  const id = r.meta.last_row_id;
-  const limitText = cfg.limits.map((l) => `${terms.limits[l.key]} ${l.label.replace(' sınırı', '').toLocaleLowerCase('tr')}`).join(' · ');
-  await event(env, id, 'Oluşturuldu', `Lisans oluşturuldu · ${dateTR(startsAt)} – ${dateTR(endsAt)} · ${contact.maxDevices} cihaz · ${limitText}`, c.cl);
+  return { id: r.meta.last_row_id, key };
+}
+
+const limitTextOf = (cfg, limits) => cfg.limits.map((l) => `${limits[l.key]} ${l.label.replace(' sınırı', '').toLocaleLowerCase('tr')}`).join(' · ');
+
+/** Paketteki diğer lisanslar (kendisi hariç). */
+export async function bundlePartners(env, id) {
+  return all(env,
+    `SELECT l.*, p.name AS program, p.slug FROM license_bundles b
+       JOIN license_bundles b2 ON b2.bundle_id = b.bundle_id AND b2.license_id <> b.license_id
+       JOIN licenses l ON l.id = b2.license_id JOIN programs p ON p.id = l.program_id
+      WHERE b.license_id = ? ORDER BY l.id`, Number(id));
+}
+
+export async function createLicense(c) {
+  const { env, t } = c;
+  const b = await readJson(c.req);
+  const prog = await first(env, 'SELECT * FROM programs WHERE id = ?', Number(b.programId));
+  if (!prog || !PRODUCTS[prog.slug]) return fail(400, 'Lisanslanabilir bir program seçin.');
+  const cfg = PRODUCTS[prog.slug];
+  const contact = cleanContact(b);
+  const terms = cleanTerms(cfg, b);
+  const bundle = b.bundle === BUNDLE.kind;
+  let otherProg = null;
+  if (bundle) {
+    if (prog.slug !== BUNDLE.main) return fail(400, `${BUNDLE.label} paketi için NİS PDKS seçin.`);
+    otherProg = await first(env, 'SELECT * FROM programs WHERE slug = ?', BUNDLE.other);
+    if (!otherProg) return fail(400, 'Yıllık İzin programı tanımlı değil.');
+    if (!terms.modules.includes(BUNDLE.mainModule)) terms.modules.push(BUNDLE.mainModule);
+  }
+  const startsIso = b.starts || isoDateTR(t);
+  const startsAt = parseDateTR(startsIso, false);
+  if (!startsAt) return fail(400, 'Başlangıç tarihi geçersiz.');
+  const endsAt = parseDateTR(b.ends || addYearISO(startsIso), true);
+  if (!startsAt || !endsAt) return fail(400, 'Tarih geçersiz.');
+  if (endsAt <= startsAt) return fail(400, 'Bitiş tarihi başlangıçtan sonra olmalı.');
+  if (endsAt - startsAt > 5 * 366 * 86400) return fail(400, 'Lisans süresi en fazla 5 yıl olabilir.');
+  if (!env.PANEL_ENC_KEY) return fail(503, 'PANEL_ENC_KEY tanımlı değil.');
+  const { id, key } = await insertLicense(env, prog, cfg, contact, terms, startsAt, endsAt, t);
+  const limitText = limitTextOf(cfg, terms.limits);
+  const pk = bundle ? ` · Paket: ${BUNDLE.label}` : '';
+  await event(env, id, 'Oluşturuldu', `Lisans oluşturuldu · ${dateTR(startsAt)} – ${dateTR(endsAt)} · ${contact.maxDevices} cihaz · ${limitText}${pk}`, c.cl);
   await audit(c, 'Lisans', `${contact.customer} için ${prog.name} lisansı oluşturuldu (${maskKey(key)})`);
+
+  let partner = null;
+  if (bundle) {
+    const ocfg = PRODUCTS[BUNDLE.other];
+    const oterms = cleanTerms(ocfg, { limits: { personel: terms.limits.personel ?? ocfg.limits[0].def }, modules: [BUNDLE.otherModule] });
+    const o = await insertLicense(env, otherProg, ocfg, contact, oterms, startsAt, endsAt, t);
+    const oText = limitTextOf(ocfg, oterms.limits);
+    await event(env, o.id, 'Oluşturuldu', `Lisans oluşturuldu · ${dateTR(startsAt)} – ${dateTR(endsAt)} · ${contact.maxDevices} cihaz · ${oText}${pk}`, c.cl);
+    for (const lid of [id, o.id]) {
+      await run(env, 'INSERT INTO license_bundles (license_id, bundle_id, kind, created_at) VALUES (?, ?, ?, ?)', lid, id, BUNDLE.kind, t);
+    }
+    await audit(c, 'Lisans', `${contact.customer} için ${otherProg.name} lisansı oluşturuldu (${maskKey(o.key)}) · ${BUNDLE.label} paketi`);
+    partner = { id: o.id, key: o.key, mask: maskKey(o.key), program: otherProg.name, limits: oterms.limits, modules: oterms.modules, limitText: oText };
+  }
 
   let download = null;
   if (b.withDownload) {
@@ -430,6 +473,7 @@ export async function createLicense(c) {
     id, key, mask: maskKey(key), program: prog.name, customer: contact.customer,
     starts: dateTR(startsAt), ends: dateTR(endsAt), maxDevices: contact.maxDevices, limits: terms.limits, modules: terms.modules,
     limitText, download, latestVersion: download ? download.version : null,
+    bundle: partner ? { label: BUNDLE.label, partner } : null,
   });
 }
 
@@ -448,7 +492,10 @@ export async function getLicense(c, [, id]) {
   const latest = await highestVersion(env, lic.program_id);
   const live = devices.filter((d) => !d.removed_at);
   const lastSeen = live.reduce((m, d) => Math.max(m, d.last_seen), 0);
+  const partners = await bundlePartners(env, lic.id);
   return json({
+    bundle: partners.length ? { label: BUNDLE.label, partners: partners.map((p) => ({
+      id: p.id, program: p.program, mask: p.key_mask, ends: dateTR(p.ends_at), status: p.status, state: licState(p, t) })) } : null,
     id: lic.id, program: lic.program, programId: lic.program_id, prefix: cfg.prefix,
     key: await decryptText(env.PANEL_ENC_KEY, lic.key_enc).catch(() => lic.key_mask), mask: lic.key_mask,
     customer: lic.customer, email: lic.email, phone: lic.phone, note: lic.note,
@@ -494,26 +541,50 @@ export async function extendLicense(c, [, id]) {
   if (!endsAt) return fail(400, 'Yeni bitiş tarihi geçersiz.');
   if (endsAt <= lic.ends_at) return fail(400, 'Yeni bitiş tarihi mevcut bitişten sonra olmalı.');
   if (endsAt - c.t > 5 * 366 * 86400) return fail(400, 'Bitiş en fazla 5 yıl sonrası olabilir.');
+  await applyExtend(c, lic, endsAt, '');
+  const also = [];
+  if (b.bundle !== false) {   // V3.12: paketteki diğer lisans da aynı tarihe uzar
+    for (const p of await bundlePartners(c.env, lic.id)) {
+      if (p.status === 'revoked' || p.ends_at >= endsAt) continue;
+      await applyExtend(c, p, endsAt, ` · ${BUNDLE.label} paketiyle birlikte`);
+      also.push(p.program);
+    }
+  }
+  return json({ ok: true, ends: dateTR(endsAt), also });
+}
+
+async function applyExtend(c, lic, endsAt, suffix) {
   await run(c.env, 'UPDATE licenses SET ends_at = ?, updated_at = ? WHERE id = ?', endsAt, c.t, lic.id);
-  await event(c.env, lic.id, 'Süre uzatıldı', `${dateTR(lic.ends_at)} → ${dateTR(endsAt)}`, c.cl);
+  await event(c.env, lic.id, 'Süre uzatıldı', `${dateTR(lic.ends_at)} → ${dateTR(endsAt)}${suffix}`, c.cl);
   if (isTrial(lic)) {   // V3.11: deneme satın alındı → deneme işareti kalkar (program "Deneme" uyarısını bırakır)
     const lim = parseJsonSafe(lic.limits_json || '{}', {});
     delete lim.deneme;
     await run(c.env, 'UPDATE licenses SET limits_json = ? WHERE id = ?', JSON.stringify(lim), lic.id);
     await event(c.env, lic.id, 'Satın alındı', 'Deneme lisansı ücretli lisansa çevrildi', c.cl);
   }
-  await audit(c, 'Lisans', `${lic.customer} · ${lic.program} süresi ${dateTR(endsAt)} tarihine uzatıldı`);
-  return json({ ok: true, ends: dateTR(endsAt) });
+  await audit(c, 'Lisans', `${lic.customer} · ${lic.program} süresi ${dateTR(endsAt)} tarihine uzatıldı${suffix}`);
 }
 
 async function setStatus(c, id, to, label) {
   const lic = await loadLicense(c, id);
   if (lic.status === 'revoked') return fail(400, 'İptal edilmiş lisans değiştirilemez.');
   if (to === 'active' && lic.status !== 'suspended') return fail(400, 'Lisans askıda değil.');
+  await applyStatus(c, lic, to, label, '');
+  const also = [];
+  if (!(c.url && c.url.searchParams.get('tek') === '1')) {   // V3.12: paketteki diğer lisans da aynı duruma geçer
+    for (const p of await bundlePartners(c.env, lic.id)) {
+      if (p.status === 'revoked' || p.status === to || (to === 'active' && p.status !== 'suspended')) continue;
+      await applyStatus(c, p, to, label, ` · ${BUNDLE.label} paketiyle birlikte`);
+      also.push(p.program);
+    }
+  }
+  return json({ ok: true, also });
+}
+
+async function applyStatus(c, lic, to, label, suffix) {
   await run(c.env, 'UPDATE licenses SET status = ?, updated_at = ? WHERE id = ?', to, c.t, lic.id);
-  await event(c.env, lic.id, label, `Lisans durumu: ${label.toLocaleLowerCase('tr')}`, c.cl);
-  await audit(c, 'Lisans', `${lic.customer} · ${lic.program} lisansı ${label.toLocaleLowerCase('tr')}`);
-  return json({ ok: true });
+  await event(c.env, lic.id, label, `Lisans durumu: ${label.toLocaleLowerCase('tr')}${suffix}`, c.cl);
+  await audit(c, 'Lisans', `${lic.customer} · ${lic.program} lisansı ${label.toLocaleLowerCase('tr')}${suffix}`);
 }
 export const suspendLicense = (c, [, id]) => setStatus(c, id, 'suspended', 'Askıya alındı');
 export const resumeLicense = (c, [, id]) => setStatus(c, id, 'active', 'Yeniden açıldı');
