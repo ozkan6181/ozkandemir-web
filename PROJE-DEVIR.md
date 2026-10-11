@@ -751,3 +751,4 @@ Tüm sürümler ayrı satırda saklanır; eski sürümler sonradan yüklenebilir
 - Zero Trust Free açıldı (takım: dry-meadow-40cb.cloudflareaccess.com). Access uygulaması "ozkandemir.net Yönetim Paneli" (ozkandemir.net/panel + www), tek politika "Yalnızca yönetici" (e-posta kodu).
 - `PANEL_ENC_KEY` ve `LICENSE_SIGNING_KEY` Worker gizli değişkenlerinde; kurtarma yedeği kullanıcıda (çevrimdışı).
 - V3.10.0 uzaktan erişim (11.10.2026): Cloudflare API anahtarı `ozkandemir-pdks-tunel` (Account › Cloudflare Tunnel Edit + Zone › DNS Edit, yalnız ozkandemir.net) panelde şifreli kayıtlı. İlk adres: `kitapsec-pdks.ozkandemir.net` → localhost:8000 (V1.32.2, tünel sağlıklı, `/health` OK). Bot Fight Mode kapalı; Access yalnız /panel.
+- V3.11.0 deneme lisansı (11.10.2026): `/lisans/api/trial` yayında (boş istek → 400 "Bu program için deneme verilmiyor."), `trials` tablosu canlı D1'de kurulu. Anahtar yalnız e-postayla (Resend) gider; her denemede info@ozkandemir.net'e bildirim.
