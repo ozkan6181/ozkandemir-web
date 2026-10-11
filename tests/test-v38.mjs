@@ -149,12 +149,10 @@ await test('Panelden yayınlanan sürüm imzalı bildirimle sunulur; dosya parma
   assert.match(part.headers.get('content-range'), new RegExp(`^bytes 5-${v2bytes.length - 1}/${v2bytes.length}$`));
 });
 
-await test('Güncel programa yeni sürüm önerilmez; eski sürüm yayına alınamaz', async () => {
+await test('Güncel programa yeni sürüm önerilmez', async () => {
   const r = await call('update-check', { key: KEY, device_id: DEV, app_version: 'v2.0.0', product: 'NPDK' });
   assert.equal(r.data.update, false);
-  const old = await admin.req('POST', `/panel/api/versions/${v1.id}/release`, { body: { code: await totp() } });
-  assert.equal(old.status, 400);
-  assert.match(old.data.error, /daha yeni/);
+  assert.equal(r.data.remaining, 0);
 });
 
 await test('Kayıtsız cihaz, geçersiz anahtar ve askıdaki lisans güncelleme alamaz', async () => {
@@ -190,6 +188,34 @@ await test('Programlar ekranında yayındaki sürüm ve güncel cihaz sayısı g
   assert.equal(p.release.upToDate, 0);
   const vs = await admin.req('GET', `/panel/api/programs/${pdks.programId}/versions`);
   assert.ok(vs.data.versions.find((v) => v.version === 'v2.0.0').released);
+});
+
+await test('Eski ve aynı gün çıkan sürümler yüklenir; program sürümleri SIRAYLA alır, ara sürüm atlanmaz', async () => {
+  // v2.0.0 yayındayken sonradan eski sürümler ve aynı gün iki ara sürüm yüklenir
+  const v15 = await upload(pdks.programId, 'v1.5.0', new TextEncoder().encode('1.5.0'));
+  const v151 = await upload(pdks.programId, 'v1.5.1', new TextEncoder().encode('1.5.1 aynı gün düzeltme'));
+  const o = await admin.req('GET', '/panel/api/overview');
+  assert.equal(o.data.programs.find((x) => x.id === pdks.programId).latest.version, 'v2.0.0', 'son sürüm numaraya göre, yükleme sırasına göre değil');
+  const vs = await admin.req('GET', `/panel/api/programs/${pdks.programId}/versions`);
+  assert.deepEqual(vs.data.versions.map((v) => v.version), ['v2.0.0', 'v1.5.1', 'v1.5.0', 'v1.2.8']);
+  assert.equal((await admin.req('POST', `/panel/api/programs/${pdks.programId}/release-all`, { body: {} })).status, 401, 'toplu yayın da kod ister');
+  const all = await admin.req('POST', `/panel/api/programs/${pdks.programId}/release-all`, { body: { code: await totp() } });
+  assert.equal(all.status, 200, JSON.stringify(all.data));
+  assert.deepEqual(all.data.versions, ['v1.2.8', 'v1.5.0', 'v1.5.1']);
+  const step = async (cur) => {
+    const r = await call('update-check', { key: KEY, device_id: DEV, app_version: cur, product: 'NPDK' });
+    return r.data.update ? { next: (await verifyToken(pub, r.data.manifest)).version, remaining: r.data.remaining } : null;
+  };
+  assert.deepEqual(await step('v1.2.7'), { next: 'v1.2.8', remaining: 3 });
+  assert.deepEqual(await step('v1.2.8'), { next: 'v1.5.0', remaining: 2 });
+  assert.deepEqual(await step('v1.5.0'), { next: 'v1.5.1', remaining: 1 });
+  assert.deepEqual(await step('v1.5.1'), { next: 'v2.0.0', remaining: 0 });
+  assert.equal(await step('v2.0.0'), null);
+  // Yayından kaldırılan ara sürüm atlanır
+  await admin.req('DELETE', `/panel/api/versions/${v15.id}/release`);
+  assert.deepEqual(await step('v1.2.8'), { next: 'v1.5.1', remaining: 1 });
+  await admin.req('POST', `/panel/api/versions/${v15.id}/release`, { body: { code: await totp() } });
+  assert.equal(v151.id > 0, true);
 });
 
 // ================= Bordro parametreleri =================

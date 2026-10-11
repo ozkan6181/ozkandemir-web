@@ -2,7 +2,13 @@
 // Müşteri programı:  POST /lisans/api/activate , POST /lisans/api/check , GET /lisans/api/public-key
 // Yönetim paneli:    /panel/api/licenses/*  (oturum + 2FA arkasında, panel.js yönlendirir)
 import { now, randomBytes, sha256hex, b64url, unb64url, encryptText, decryptText } from './security.js';
-import { json, fail, first, all, run, changes, readJson, HttpError, fmtTR, audit, chargeAttempt } from './common.js';
+import { json, fail, first, all, run, changes, readJson, HttpError, fmtTR, audit, chargeAttempt, compareVersions } from './common.js';
+
+// Programın en yüksek numaralı hazır sürümü (eski sürümler sonradan yüklenmiş olabilir)
+async function highestVersion(env, programId) {
+  const rows = await all(env, "SELECT id, version, created_at FROM versions WHERE program_id = ? AND status = 'ready'", programId);
+  return rows.sort((a, b) => compareVersions(b.version, a.version) || b.created_at - a.created_at)[0] || null;
+}
 
 // ---------- Ürünler ----------
 // slug → programs.slug ; prefix → anahtar ön eki ; limits/modules → lisans koşulları
@@ -285,7 +291,7 @@ async function programsWithProducts(env) {
   const progs = await all(env, 'SELECT id, slug, name FROM programs ORDER BY id');
   const latest = await all(env, "SELECT program_id, id, version, created_at FROM versions WHERE status = 'ready' ORDER BY created_at DESC, id DESC");
   const latestBy = {};
-  for (const v of latest) if (!latestBy[v.program_id]) latestBy[v.program_id] = v;
+  for (const v of latest) if (!latestBy[v.program_id] || compareVersions(v.version, latestBy[v.program_id].version) > 0) latestBy[v.program_id] = v;
   return progs.filter((p) => PRODUCTS[p.slug]).map((p) => ({
     programId: p.id, slug: p.slug, name: p.name, prefix: PRODUCTS[p.slug].prefix,
     limits: PRODUCTS[p.slug].limits, modules: PRODUCTS[p.slug].modules,
@@ -406,7 +412,7 @@ export async function createLicense(c) {
 
   let download = null;
   if (b.withDownload) {
-    const v = await first(env, "SELECT id, version FROM versions WHERE program_id = ? AND status = 'ready' ORDER BY created_at DESC, id DESC LIMIT 1", prog.id);
+    const v = await highestVersion(env, prog.id);
     if (v) {
       const token = b64url(randomBytes(32));
       await run(env, 'INSERT INTO links (token_hash, version_id, customer, expires_at, max_downloads, created_at) VALUES (?, ?, ?, ?, ?, ?)',
@@ -434,7 +440,7 @@ export async function getLicense(c, [, id]) {
   const cfg = PRODUCTS[lic.slug];
   const devices = await all(env, 'SELECT * FROM activations WHERE license_id = ? ORDER BY removed_at IS NOT NULL, last_seen DESC', lic.id);
   const events = await all(env, 'SELECT at, type, detail, ip, location FROM license_events WHERE license_id = ? ORDER BY at DESC, id DESC LIMIT 100', lic.id);
-  const latest = await first(env, "SELECT version FROM versions WHERE program_id = ? AND status = 'ready' ORDER BY created_at DESC, id DESC LIMIT 1", lic.program_id);
+  const latest = await highestVersion(env, lic.program_id);
   const live = devices.filter((d) => !d.removed_at);
   const lastSeen = live.reduce((m, d) => Math.max(m, d.last_seen), 0);
   return json({

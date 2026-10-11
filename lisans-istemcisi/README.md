@@ -66,6 +66,7 @@ if yeni:
         # dosya: SHA-256'sı imzalı bildirimle doğrulanmış kurulum paketi → kurulumu başlat
 ```
 
+- **Sıralı güncelleme:** Program, kurulu sürümünden sonraki ilk yayındaki sürümü alır (ör. v1.2.7 → v1.2.8 → v1.5.0 → v2.0.0); hiçbir ara sürüm atlanmaz. `yeni.remaining` sırada bekleyen güncelleme sayısıdır; kurulumdan sonra program yeni sürüm numarasıyla tekrar `check_update()` çağırır.
 - Bildirim ozkandemir.net imzalıdır; başka bir sunucu veya değiştirilmiş bildirim kabul edilmez.
 - İndirme izni 1 saat geçerlidir; kesilirse tekrar çağrıldığında kaldığı yerden devam eder.
 - Parmak izi tutmazsa dosya silinir ve `LicenseError(code="checksum")` fırlatılır.

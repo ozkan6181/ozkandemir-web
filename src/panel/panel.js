@@ -16,7 +16,7 @@ import {
 } from './license.js';
 import { prepareEnv } from './bootstrap.js';
 import { signingPublicKey, isoDateTR, dateTR, LIC } from './license.js';
-import { handleUpdateApi, publishRelease, unpublishRelease, releaseSummary } from './guncelleme.js';
+import { handleUpdateApi, publishRelease, publishAllReleases, unpublishRelease, releaseSummary, compareVersions } from './guncelleme.js';
 import { getPayroll, previewPayroll, publishPayroll, restorePayroll, dismissAlert, isPayrollPublicPath, servePayrollPublic } from './parametre.js';
 import { runWatch } from './watch.js';
 import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfsetup.js';
@@ -258,7 +258,9 @@ async function overview(c) {
   const latest = {};
   const counts = {};
   for (const v of versions) {
-    if (!latest[v.program_id]) latest[v.program_id] = v;
+    // Eski sürümler sonradan yüklenebilir: "son sürüm" yükleme tarihine değil sürüm numarasına göre
+    const cur = latest[v.program_id];
+    if (!cur || compareVersions(v.version, cur.version) > 0) latest[v.program_id] = v;
     counts[v.program_id] = (counts[v.program_id] || 0) + 1;
   }
   const list = programs.map((p) => {
@@ -312,7 +314,8 @@ async function listVersions(c, [, pid]) {
     c.t, p.id);
   return json({
     program: p,
-    versions: rows.map((v) => ({ ...v, sizeText: fmtSize(v.size), date: fmtTR(v.created_at), released: v.released_at ? fmtTR(v.released_at) : null, mandatory: Boolean(v.mandatory) })),
+    versions: rows.sort((a, b) => compareVersions(b.version, a.version) || b.created_at - a.created_at)
+      .map((v) => ({ ...v, sizeText: fmtSize(v.size), date: fmtTR(v.created_at), released: v.released_at ? fmtTR(v.released_at) : null, mandatory: Boolean(v.mandatory) })),
   });
 }
 
@@ -804,6 +807,7 @@ const ROUTES = [
   ['POST', /^\/licenses\/(\d+)\/offline$/, withCode(offlineActivate)],
   ['POST', /^\/versions\/(\d+)\/release$/, releasePublish],
   ['DELETE', /^\/versions\/(\d+)\/release$/, unpublishRelease],
+  ['POST', /^\/programs\/(\d+)\/release-all$/, withCode(publishAllReleases)],
   ['GET', /^\/payroll$/, getPayroll],
   ['POST', /^\/payroll\/preview$/, previewPayroll],
   ['POST', /^\/payroll$/, payrollPublish],

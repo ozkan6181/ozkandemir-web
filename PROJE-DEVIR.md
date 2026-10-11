@@ -739,3 +739,6 @@ Python lisans istemcisinin (`lisans-istemcisi/python/odlisans.py`) programlara e
 
 ### V3.8.1 — Lisans işlemlerinde ikinci doğrulama (11.10.2026)
 Lisans oluşturma, süre uzatma, koşul düzenleme, askıdaki lisansı yeniden açma, çevrimdışı lisans kodu üretme ve güncelleme yayını her seferinde doğrulama uygulamasındaki 6 haneli kodu ister (`withCode`, panel.js). Kod yalnızca işlem başarılı olursa harcanır; form hatasında aynı kodla düzeltilip tekrar denenebilir. Askıya alma, iptal ve cihaz kaldırma (kısıtlayan işlemler) kod istemez. Ayrı PIN kullanılmıyor (kullanıcı kararı).
+
+### V3.8.2 — Sıralı güncelleme (11.10.2026)
+Tüm sürümler ayrı satırda saklanır; eski sürümler sonradan yüklenebilir ve yayınlanabilir. `update-check` artık en yeniyi değil, kurulu sürümden SONRAKİ ilk yayındaki sürümü verir (`remaining` = sırada bekleyen sayı); program kurulumdan sonra tekrar sorar, ara sürüm atlanmaz. "Son sürüm" her yerde sürüm numarasına göre belirlenir (yükleme tarihine göre değil). Panelde "Yayında olmayan sürümlerin hepsini yayınla" (2FA). Python istemcisi: `UpdateInfo.remaining`, `UpdateInfo.latest`.

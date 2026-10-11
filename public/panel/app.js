@@ -228,7 +228,7 @@
         h('td', { text: v ? v.sizeText : '—' }),
         h('td', { text: v ? v.date : '—' }),
         h('td', {}, p.release
-          ? h('span', {}, h('span', { class: 'pill pill-' + (p.release.mandatory ? 'warn' : 'ok'), text: `${p.release.version}${p.release.mandatory ? ' · zorunlu' : ''}` }),
+          ? h('span', {}, h('span', { class: 'pill pill-' + (p.release.mandatory ? 'warn' : 'ok'), text: `${p.release.count > 1 ? p.release.count + ' sürüm · son ' : ''}${p.release.version}${p.release.mandatory ? ' · zorunlu' : ''}` }),
             h('span', { class: 'sub', text: p.release.devices ? `${p.release.upToDate}/${p.release.devices} cihaz güncel` : 'Henüz etkin cihaz yok' }))
           : h('span', { class: 'pill pill-mute', text: 'Yayında değil' })),
         h('td', {}, badge),
@@ -244,10 +244,14 @@
 
   async function openVersions(p) {
     const wrap = h('div', { class: 'table-wrap' });
-    openModal(`${p.name} · Sürümler`, h('div', { class: 'modal-body' }, wrap), true);
+    const top = h('div', {});
+    openModal(`${p.name} · Sürümler`, h('div', { class: 'modal-body' }, top, wrap), true);
     try {
       const r = await call(`/programs/${p.id}/versions`);
       if (!r.versions.length) { wrap.replaceChildren(h('p', { class: 'empty', text: 'Bu programa ait sürüm yok.' })); return; }
+      const unpublished = r.versions.filter((v) => !v.released).length;
+      top.replaceChildren(h('div', { class: 'alert alert-info' }, h('span', { text: `Tüm sürümler ayrı satırda saklanır. Müşterinin programı kurulu sürümünden sonraki yayındaki sürümü alır, kurunca bir sonrakini ister; ara sürüm atlanmaz.${unpublished ? ` Yayında olmayan ${unpublished} sürüm var.` : ''}` })),
+        unpublished > 1 ? h('button', { type: 'button', class: 'btn btn-sm btn-gold', onclick: () => releaseAllModal(p, unpublished) }, `Yayında olmayan ${unpublished} sürümün hepsini yayınla`) : null);
       wrap.replaceChildren(h('table', { class: 'tbl mid' },
         h('thead', {}, h('tr', {}, ['Sürüm', 'Tarih', 'Boyut', 'Notlar / SHA-256', 'Müşteri güncellemesi', ''].map((t, i) => h('th', { class: i === 5 ? 'r' : null, text: t })))),
         h('tbody', {}, r.versions.map((v) => {
@@ -278,13 +282,25 @@
     } catch (e) { wrap.replaceChildren(h('p', { class: 'empty', text: e.message })); }
   }
 
+  function releaseAllModal(p, n) {
+    formModal(`${p.name} · ${n} sürümü yayınla`, [
+      h('p', { class: 'muted', text: 'Yayında olmayan tüm sürümler müşterilere güncelleme olarak açılır. Her müşteri kurulu sürümünden başlayarak bunları sırayla alır.' }),
+      codeField('relAllCode', 'Onay için doğrulama uygulamasındaki 6 haneli kod'),
+    ], 'Hepsini yayınla', async () => {
+      const r = await call(`/programs/${p.id}/release-all`, { method: 'POST', body: { code: $('#relAllCode').value.trim() } });
+      closeModal();
+      toast(`${r.count} sürüm yayınlandı: ${r.versions.join(', ')}`);
+      loadOverview();
+    });
+  }
+
   function releaseModal(p, v) {
     const notes = h('textarea', { class: 'textarea', rows: 3, maxlength: 1000 }, v.notes || '');
     const mand = h('input', { type: 'checkbox' });
     const err = h('div', { class: 'alert', role: 'alert', hidden: true });
     const btn = h('button', { type: 'submit', class: 'btn btn-navy' }, 'Müşterilere yayınla');
     const form = h('form', { class: 'modal-body', novalidate: true },
-      h('p', { class: 'muted', text: `${p.name} ${v.version}, lisansı etkin tüm müşterilerin programında “Yeni sürüm var” olarak görünür. Kurulumu müşterinin yöneticisi onaylar; program dosyanın SHA-256 parmak izini doğrulamadan kurmaz.` }),
+      h('p', { class: 'muted', text: `${p.name} ${v.version} güncelleme olarak açılır. Daha eski sürümde kalan müşteriler önce aradaki sürümleri sırayla alır, sonra bunu. Kurulumu müşterinin yöneticisi onaylar; program dosyanın SHA-256 parmak izini doğrulamadan kurmaz.` }),
       h('label', { class: 'field' }, 'Müşterinin göreceği sürüm notu', notes),
       h('label', { class: 'check' }, mand, h('span', { text: 'Zorunlu güncelleme (program, yönetici erteleyemesin diye uyarır)' })),
       codeField('relCode', 'Onay için doğrulama uygulamasındaki 6 haneli kod'),

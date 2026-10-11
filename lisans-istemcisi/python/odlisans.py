@@ -282,11 +282,14 @@ class UpdateInfo:
     published: int
     download_url: str
     expires: int
+    remaining: int = 0      # bu sürümden sonra sırada bekleyen güncelleme sayısı
+    latest: str = ""        # yayındaki en yeni sürüm
 
     def to_dict(self) -> dict:
         return {"version": self.version, "current": self.current, "filename": self.filename, "size": self.size,
                 "sha256": self.sha256, "mandatory": self.mandatory, "notes": self.notes,
-                "published": _fmt_date(self.published) if self.published else ""}
+                "published": _fmt_date(self.published) if self.published else "",
+                "remaining": self.remaining, "latest": self.latest}
 
 
 class LicenseError(Exception):
@@ -509,7 +512,9 @@ class LicenseClient:
 
     # ----- güncelleme -----
     def check_update(self) -> Optional[UpdateInfo]:
-        """Yayında daha yeni bir sürüm varsa imzası doğrulanmış bilgisini, yoksa None döndürür."""
+        """Kurulu sürümden SONRAKİ ilk yayındaki sürümü döndürür (yoksa None).
+        Güncellemeler sırayla kurulur: kurulumdan sonra program yeni sürüm numarasıyla tekrar sorar ve
+        bir sonrakini alır; info.remaining sırada bekleyen güncelleme sayısını gösterir."""
         data = self._load()
         if not data.get("key"):
             raise LicenseError("Güncelleme için önce lisansı etkinleştirin.", "no_license")
@@ -527,7 +532,8 @@ class LicenseClient:
                           filename=os.path.basename(str(m.get("filename") or "guncelleme.zip")),
                           size=int(m.get("size", 0)), sha256=str(m["sha256"]).lower(),
                           mandatory=bool(m.get("mandatory")), notes=str(m.get("notes") or ""),
-                          published=int(m.get("published", 0)), download_url=url, expires=int(m.get("exp", 0)))
+                          published=int(m.get("published", 0)), download_url=url, expires=int(m.get("exp", 0)),
+                          remaining=int(m.get("remaining", 0)), latest=str(m.get("latest", "")))
 
     def download_update(self, info: UpdateInfo, target_dir: Optional[str] = None,
                         progress: Optional[Callable[[int, int], None]] = None) -> str:

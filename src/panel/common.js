@@ -137,3 +137,15 @@ export async function lockIfReached(env, key, t, max, lockSecs) {
   const r = await run(env, 'UPDATE login_attempts SET locked_until = ? WHERE key = ? AND fails >= ? AND locked_until <= ?', t + lockSecs, key, max, t);
   return changes(r) > 0 ? t + lockSecs : 0;
 }
+
+// "v2.10.1" > "v2.9.7" — sayısal karşılaştırma; sayı olmayan son ekler (beta, rc) önceliği düşürür
+export function compareVersions(a, b) {
+  const pa = String(a || '').match(/\d+/g) || [];
+  const pb = String(b || '').match(/\d+/g) || [];
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = Number(pa[i] || 0), y = Number(pb[i] || 0);
+    if (x !== y) return x > y ? 1 : -1;
+  }
+  const preA = /[-_.]?(alpha|beta|rc|test)/i.test(String(a)), preB = /[-_.]?(alpha|beta|rc|test)/i.test(String(b));
+  return preA === preB ? 0 : preA ? -1 : 1;
+}

@@ -4,7 +4,9 @@
 // Yönetim paneli:    /panel/api/versions/:id/release (yayınla / yayından kaldır)
 // Güncellemeyi müşteri tarafında yönetici onaylar; program dosyanın SHA-256 parmak izini ve imzayı doğrular.
 import { now } from './security.js';
-import { json, fail, first, all, run, readJson, fmtTR, fmtSize, contentDisposition, audit } from './common.js';
+import { json, fail, first, all, run, readJson, fmtTR, fmtSize, contentDisposition, audit, compareVersions } from './common.js';
+
+export { compareVersions };
 import {
   BY_PREFIX, keyHash, licState, cleanBody, licLocked, licFail, event, signPayload, verifyToken, signingPublicKey,
 } from './license.js';
@@ -13,24 +15,13 @@ export const UPD = {
   MANIFEST_TTL: 3600,   // bildirim ve indirme izni 1 saat geçerli
 };
 
-// "v2.10.1" > "v2.9.7" — sayısal karşılaştırma; sayı olmayan son ekler (beta, rc) önceliği düşürür
-export function compareVersions(a, b) {
-  const pa = String(a || '').match(/\d+/g) || [];
-  const pb = String(b || '').match(/\d+/g) || [];
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const x = Number(pa[i] || 0), y = Number(pb[i] || 0);
-    if (x !== y) return x > y ? 1 : -1;
-  }
-  const preA = /[-_.]?(alpha|beta|rc|test)/i.test(String(a)), preB = /[-_.]?(alpha|beta|rc|test)/i.test(String(b));
-  return preA === preB ? 0 : preA ? -1 : 1;
-}
 
-async function latestRelease(env, programId) {
+// Programın yayındaki tüm sürümleri, eskiden yeniye (aynı numarada önce yayınlanan önce)
+async function releasesFor(env, programId) {
   const rows = await all(env,
-    "SELECT r.version_id, r.mandatory, r.public_notes, r.published_at, v.version, v.filename, v.size, v.sha256, v.r2_key, v.notes FROM releases r JOIN versions v ON v.id = r.version_id WHERE r.program_id = ? AND v.status = 'ready'",
+    "SELECT r.version_id, r.mandatory, r.public_notes, r.published_at, v.version, v.filename, v.size, v.sha256, v.r2_key, v.notes, v.created_at FROM releases r JOIN versions v ON v.id = r.version_id WHERE r.program_id = ? AND v.status = 'ready'",
     programId);
-  rows.sort((x, y) => compareVersions(y.version, x.version) || y.published_at - x.published_at);
-  return rows[0] || null;
+  return rows.sort((x, y) => compareVersions(x.version, y.version) || x.created_at - y.created_at || x.version_id - y.version_id);
 }
 
 // ---------- Müşteri programı ----------
@@ -52,10 +43,15 @@ export async function updateCheck(request, env, cl) {
     await run(env, 'UPDATE activations SET app_version = ? WHERE id = ?', body.version, act.id);
   }
 
-  const rel = await latestRelease(env, lic.program_id);
-  if (!rel || compareVersions(rel.version, body.version) <= 0) {
-    return json({ ok: true, update: false, current: body.version, latest: rel ? rel.version : body.version, message: 'Program güncel.' });
+  // Güncellemeler sırayla kurulur: programa, kurulu sürümünden SONRAKİ ilk yayındaki sürüm verilir.
+  // Kurulunca program yeniden sorar ve bir sonrakini alır; böylece hiçbir ara sürüm atlanmaz.
+  const list = await releasesFor(env, lic.program_id);
+  const pending = list.filter((x) => compareVersions(x.version, body.version) > 0);
+  const latest = list.length ? list[list.length - 1].version : body.version;
+  if (!pending.length) {
+    return json({ ok: true, update: false, current: body.version, latest, remaining: 0, message: 'Program güncel.' });
   }
+  const rel = pending[0];
   const exp = t + UPD.MANIFEST_TTL;
   const dl = await signPayload(env, { typ: 'od-dl', vid: rel.version_id, lid: lic.id, device: body.deviceId, exp });
   const manifest = await signPayload(env, {
@@ -71,13 +67,15 @@ export async function updateCheck(request, env, cl) {
     sha256: rel.sha256,
     mandatory: Boolean(rel.mandatory),
     notes: rel.public_notes || rel.notes || '',
+    remaining: pending.length - 1,
+    latest,
     published: rel.published_at,
     download: `/lisans/api/update-download?t=${encodeURIComponent(dl)}`,
     iat: t,
     exp,
     server: 'ozkandemir.net',
   });
-  return json({ ok: true, update: true, current: body.version, latest: rel.version, mandatory: Boolean(rel.mandatory), manifest });
+  return json({ ok: true, update: true, current: body.version, next: rel.version, latest, remaining: pending.length - 1, mandatory: Boolean(rel.mandatory), manifest });
 }
 
 export async function updateDownload(request, env, url, cl) {
@@ -138,15 +136,26 @@ export async function publishRelease(c, [, vid]) {
   const b = await readJson(c.req);
   const notes = String(b.notes ?? '').trim().slice(0, 1000) || null;
   const mandatory = b.mandatory ? 1 : 0;
-  const latest = await latestRelease(c.env, v.program_id);
-  if (latest && latest.version_id !== v.id && compareVersions(v.version, latest.version) < 0) {
-    return fail(400, `Yayında daha yeni bir sürüm var (${latest.version}). Eski sürüm güncelleme olarak sunulamaz.`);
-  }
+  // Eski sürümler de yayınlanabilir: müşteriler kurulu sürümlerinden sonraki sürümü sırayla alır
   await run(c.env,
     'INSERT INTO releases (version_id, program_id, mandatory, public_notes, published_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(version_id) DO UPDATE SET mandatory = excluded.mandatory, public_notes = excluded.public_notes',
     v.id, v.program_id, mandatory, notes, c.t);
   await audit(c, 'Güncelleme', `${v.program} ${v.version} müşterilere güncelleme olarak yayınlandı${mandatory ? ' (zorunlu)' : ''}`);
   return json({ ok: true });
+}
+
+// Programın yayında olmayan tüm sürümlerini tek seferde yayınlar (eski sürümler sonradan yüklendiğinde)
+export async function publishAllReleases(c, [, pid]) {
+  const p = await first(c.env, 'SELECT id, name FROM programs WHERE id = ?', Number(pid));
+  if (!p) return fail(404, 'Program bulunamadı.');
+  const rows = await all(c.env, "SELECT v.id, v.version FROM versions v LEFT JOIN releases r ON r.version_id = v.id WHERE v.program_id = ? AND v.status = 'ready' AND v.sha256 IS NOT NULL AND r.version_id IS NULL", p.id);
+  if (!rows.length) return fail(400, 'Yayınlanmamış sürüm yok.');
+  for (const v of rows) {
+    await run(c.env, 'INSERT OR IGNORE INTO releases (version_id, program_id, mandatory, public_notes, published_at) VALUES (?, ?, 0, NULL, ?)', v.id, p.id, c.t);
+  }
+  const names = rows.map((v) => v.version).sort(compareVersions);
+  await audit(c, 'Güncelleme', `${p.name}: ${names.length} sürüm müşterilere güncelleme olarak yayınlandı (${names.join(', ')})`);
+  return json({ ok: true, count: names.length, versions: names });
 }
 
 export async function unpublishRelease(c, [, vid]) {
@@ -172,6 +181,7 @@ export async function releaseSummary(env, t) {
     const devices = acts.filter((a) => String(a.program_id) === pid);
     out[pid] = {
       versionId: r.version_id, version: r.version, mandatory: Boolean(r.mandatory), published: fmtTR(r.published_at),
+      count: rels.filter((x) => String(x.program_id) === pid).length,
       devices: devices.length,
       upToDate: devices.filter((a) => compareVersions(a.app_version, r.version) >= 0).length,
     };
