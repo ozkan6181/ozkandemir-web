@@ -332,6 +332,49 @@ await test('Destek: e-posta metni güvenli (alıcı ve gönderen sabit, yanıt a
   assert.ok(!/\n/.test(m.subject), 'konu tek satır');
 });
 
+await test('Destek: RESEND_API_KEY varsa e-posta Resend API ile gider; Resend hatası soruyu kaybettirmez', async () => {
+  const realFetch = globalThis.fetch;
+  const calls = [];
+  let fail = false;
+  globalThis.fetch = async (url, init) => {
+    if (String(url) !== 'https://api.resend.com/emails') return realFetch(url, init);
+    calls.push({ url: String(url), init });
+    if (fail) return new Response(JSON.stringify({ name: 'validation_error', message: 'The ozkandemir.net domain is not verified.' }), { status: 403, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ id: 're_' + calls.length }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  const savedMail = env.SUPPORT_MAIL;
+  delete env.SUPPORT_MAIL;
+  env.RESEND_API_KEY = 're_test_key';
+  try {
+    let r = await call(question({ license: await legacyLicense({}) }));
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(rows().at(-1).mail_state, 'sent');
+    assert.equal(calls.length, 1);
+    const c = calls[0];
+    assert.equal(c.init.method, 'POST');
+    assert.equal(new Headers(c.init.headers).get('authorization'), 'Bearer re_test_key');
+    const b = JSON.parse(c.init.body);
+    assert.equal(b.from, 'NİS PDKS Destek <destek@ozkandemir.net>');
+    assert.deepEqual(b.to, ['info@ozkandemir.net']);
+    assert.equal(b.reply_to, 'muhasebe@kitapsec.example');
+    assert.match(b.subject, /^\[NİS PDKS Destek #\d+\]/);
+    assert.match(b.text, /Fazla mesai raporunu/);
+    fail = true;
+    r = await call(question({ license: await legacyLicense({}) }));
+    assert.equal(r.status, 200);
+    const q = rows().at(-1);
+    assert.equal(q.mail_state, 'pending');
+    assert.match(q.mail_error, /validation_error/);
+    fail = false;
+    assert.equal(await retrySupportMail(env), 1);
+    assert.equal(rows().at(-1).mail_state, 'sent');
+  } finally {
+    globalThis.fetch = realFetch;
+    delete env.RESEND_API_KEY;
+    env.SUPPORT_MAIL = savedMail;
+  }
+});
+
 // Panel: Destek soruları kartı
 const ORIGIN = 'https://ozkandemir.net';
 const jar = {};

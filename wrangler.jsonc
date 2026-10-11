@@ -29,12 +29,9 @@
     // Web üzerinden ilk kurulum kodunun SHA-256 özeti (kodun kendisi değil). Yönetici hesabı oluşunca kurulum kapanır.
     "SETUP_CODE_HASH": "b7af38bc1703ea279170e7e6aeb4b6e7164acdd45ca5e2da1d21b11d027edbdb"
   },
-  // Destek soruları e-postası (Cloudflare Email Service). Yalnız info@ozkandemir.net'e, yalnız destek@ozkandemir.net'ten gider.
-  // Kurulum: Email Service › Email Sending › ozkandemir.net "Onboard"; ücretsiz planda info@ozkandemir.net
-  // Email Routing › Destination addresses altında doğrulanmış olmalı. Kurulmamışsa sorular yine panelde görünür.
-  "send_email": [
-    { "name": "SUPPORT_MAIL", "destination_address": "info@ozkandemir.net", "allowed_sender_addresses": ["destek@ozkandemir.net"] }
-  ],
+  // Destek soruları e-postası: Resend (gizli değişken RESEND_API_KEY). Cloudflare Email Service (send_email / SUPPORT_MAIL)
+  // Workers Paid plan ister; plan yükseltilirse buraya eklenebilir:
+  // "send_email": [{ "name": "SUPPORT_MAIL", "destination_address": "info@ozkandemir.net", "allowed_sender_addresses": ["destek@ozkandemir.net"] }],
   // Her gün 07:17 (TSİ) resmi kaynak takibi
   "triggers": { "crons": ["17 4 * * *"] },
   "observability": { "enabled": true }

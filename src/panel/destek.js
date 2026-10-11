@@ -3,7 +3,8 @@
 // NİS PDKS → POST /pdks-api/api.php {a:'support_question', question, contact, page, user_type, lang, search,
 //                                     asked_at, app_version, + lisans kimliği}
 // Soru önce veritabanına yazılır (kaybolmaz), sonra destek adresine e-posta olarak gider.
-// E-posta: Cloudflare Email Service bağlaması SUPPORT_MAIL (wrangler.jsonc › send_email). Alıcı SUPPORT_EMAIL
+// E-posta: Resend (gizli değişken RESEND_API_KEY, ücretsiz paket) varsa onunla; yoksa Cloudflare Email Service
+// bağlaması SUPPORT_MAIL (Workers Paid gerektirir). Alıcı SUPPORT_EMAIL
 // (varsayılan info@ozkandemir.net), gönderen SUPPORT_FROM (varsayılan destek@ozkandemir.net).
 // Gönderilemeyen e-postalar her yeni soruda ve günlük zamanlanmış görevde yeniden denenir; panelde "Destek soruları"
 // kartında her durumda görünür.
@@ -58,13 +59,42 @@ export function mailFor(q, env) {
   return msg;
 }
 
+// Resend HTTP API: yalnızca gönderme yetkili anahtar; posta kutusu şifresi gerekmez
+async function resendSend(key, m) {
+  let r;
+  try {
+    r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        from: `${m.from.name} <${m.from.email}>`, to: [m.to], subject: m.subject, text: m.text,
+        ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+      }),
+    });
+  } catch (e) {
+    const err = new Error('Resend sunucusuna bağlanılamadı'); err.code = 'RESEND_NETWORK'; throw err;
+  }
+  if (!r.ok) {
+    let d = {};
+    try { d = await r.json(); } catch {}
+    const err = new Error(d.message || `HTTP ${r.status}`); err.code = d.name || `HTTP_${r.status}`; throw err;
+  }
+}
+
+export function mailTransport(env) {
+  if (env.RESEND_API_KEY) return { name: 'Resend', send: (m) => resendSend(env.RESEND_API_KEY, m) };
+  if (env.SUPPORT_MAIL && typeof env.SUPPORT_MAIL.send === 'function') return { name: 'Cloudflare', send: (m) => env.SUPPORT_MAIL.send(m) };
+  return null;
+}
+
 async function deliver(env, q) {
-  if (!env.SUPPORT_MAIL || typeof env.SUPPORT_MAIL.send !== 'function') {
-    await run(env, "UPDATE support_questions SET mail_error = ? WHERE id = ?", 'E-posta bağlaması (SUPPORT_MAIL) tanımlı değil', q.id);
+  const tr = mailTransport(env);
+  if (!tr) {
+    await run(env, "UPDATE support_questions SET mail_error = ? WHERE id = ?", 'E-posta gönderimi kurulmadı (RESEND_API_KEY veya SUPPORT_MAIL yok)', q.id);
     return false;
   }
   try {
-    await env.SUPPORT_MAIL.send(mailFor(q, env));
+    await tr.send(mailFor(q, env));
     await run(env, "UPDATE support_questions SET mail_state = 'sent', mail_error = NULL, mail_tries = mail_tries + 1 WHERE id = ?", q.id);
     return true;
   } catch (e) {
@@ -77,7 +107,7 @@ async function deliver(env, q) {
 
 // Bekleyen e-postaları yeniden dener (yeni soru geldiğinde ve günlük zamanlanmış görevde)
 export async function retrySupportMail(env, limit = 20) {
-  if (!env.DB || !env.SUPPORT_MAIL) return 0;
+  if (!env.DB || !mailTransport(env)) return 0;
   const rows = await all(env, "SELECT * FROM support_questions WHERE mail_state = 'pending' ORDER BY id LIMIT ?", limit);
   let sent = 0;
   for (const q of rows) if (await deliver(env, q)) sent++;
@@ -123,7 +153,8 @@ export async function listSupport(c) {
   const open = await first(c.env, 'SELECT COUNT(*) AS n FROM support_questions WHERE answered_at IS NULL');
   return json({
     open: open ? open.n : 0,
-    mailReady: Boolean(c.env.SUPPORT_MAIL),
+    mailReady: Boolean(mailTransport(c.env)),
+    mailVia: mailTransport(c.env) ? mailTransport(c.env).name : null,
     to: c.env.SUPPORT_EMAIL || SUPPORT.TO,
     list: rows.map((r) => ({ ...r, received: fmt(r.received_at), answered: r.answered_at ? fmt(r.answered_at) : null,
       contactIsEmail: EMAIL_RE.test(r.contact || '') })),
