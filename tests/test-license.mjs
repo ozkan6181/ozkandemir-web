@@ -66,8 +66,16 @@ async function adminLogin() {
 }
 await adminLogin();
 // Süre ileri sarıldığında panel oturumu (30 dk hareketsizlik) kapanır; yeniden giriş yap
+// Lisans oluşturma/uzatma/düzenleme/açma ve çevrimdışı kod her seferinde doğrulama kodu ister:
+// testlerde kod verilmemişse güncel kod otomatik eklenir (kodsuz durum ayrıca test edilir)
+const CODE_PATHS = /^\/panel\/api\/licenses(\/\d+\/(update|extend|resume|offline))?$/;
 const admin = {
   async req(...a) {
+    const [method, p, opts = {}] = a;
+    if (method === 'POST' && CODE_PATHS.test(p) && !(opts.body && 'code' in opts.body) && !opts.noCode) {
+      tick(31);
+      a = [method, p, { ...opts, body: { ...(opts.body || {}), code: await S.hotp(SECRET, Math.floor(S.now() / 30)) } }];
+    }
     let r = await adminRaw.req(...a);
     if (r.status === 401 && r.data && r.data.restart) { await adminLogin(); r = await adminRaw.req(...a); }
     return r;
@@ -351,10 +359,32 @@ await test('Cloudflare secret değişkeni kaldırılsa bile lisans API çalışm
   assert.ok([200, 403].includes(r.status), 'imza anahtarı mevcut (secret)');
 });
 
+await test('Lisans oluşturma kod ister; form hatasında aynı kod tekrar kullanılabilir, başarıdan sonra kullanılamaz', async () => {
+  const p = await program('NPDK');
+  const noCode = await admin.req('POST', '/panel/api/licenses', { body: { programId: p.programId, customer: 'Kodsuz Deneme' }, noCode: true });
+  assert.equal(noCode.status, 401);
+  assert.match(noCode.data.error, /6 haneli kod/);
+  tick(31);
+  const code = await S.hotp(SECRET, Math.floor(S.now() / 30));
+  const bad = await admin.req('POST', '/panel/api/licenses', { body: { programId: p.programId, customer: 'x', code } });
+  assert.equal(bad.status, 400, 'form hatası');
+  const ok = await admin.req('POST', '/panel/api/licenses', { body: { programId: p.programId, customer: 'Kodlu Deneme A.Ş.', code } });
+  assert.equal(ok.status, 200, 'aynı kodla düzeltilmiş form kabul edilir');
+  const again = await admin.req('POST', '/panel/api/licenses', { body: { programId: p.programId, customer: 'Tekrar Deneme A.Ş.', code } });
+  assert.equal(again.status, 401, 'kullanılmış kod ikinci lisansı oluşturamaz');
+  const ext = await admin.req('POST', `/panel/api/licenses/${ok.data.id}/extend`, { body: { ends: '2031-01-01', code: '123456' } });
+  assert.equal(ext.status, 401, 'yanlış kodla süre uzatılamaz');
+  // Kısıtlayan işlemler kod istemez
+  assert.equal((await admin.req('POST', `/panel/api/licenses/${ok.data.id}/suspend`, { body: {} })).status, 200);
+  assert.equal((await admin.req('POST', `/panel/api/licenses/${ok.data.id}/resume`, { body: {}, noCode: true })).status, 401, 'yeniden açma kod ister');
+  assert.equal((await admin.req('POST', `/panel/api/licenses/${ok.data.id}/revoke`, { body: {} })).status, 200);
+});
+
 // ================= Python istemcisi ile uçtan uca =================
 const py = spawnSync('python3', ['--version']);
 if (py.status === 0) {
   clock = realNow(); // Python gerçek saati kullanır
+  env.DB._db.prepare("UPDATE admin SET totp_last_step = 0").run(); // saat geri alındığı için kod sayacını sıfırla (yalnızca test)
   const http = await import('node:http');
   const srv = http.createServer(async (q, res) => {
     const chunks = []; for await (const ch of q) chunks.push(ch);

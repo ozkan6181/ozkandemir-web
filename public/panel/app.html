@@ -201,6 +201,9 @@
                 <label class="field">İç not (müşteri görmez)<textarea class="textarea" id="licNote" rows="2" maxlength="500"></textarea></label>
               </fieldset>
               <label class="check" id="licDlWrap"><input type="checkbox" id="licWithDl" checked><span id="licDlText">Mesaja kurulum dosyası indirme linkini de ekle (7 gün, 3 indirme)</span></label>
+              <label class="field">Onay için doğrulama uygulamasındaki 6 haneli kod
+                <input class="input mono" id="licCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+              </label>
               <div id="licMsg" class="alert" role="alert" hidden></div>
               <button type="submit" class="btn btn-navy btn-block" id="licBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M10.8 12.2L20 3M16 7l3 3M18 5l2 2"></path></svg>Lisans anahtarını oluştur</button>
             </form>

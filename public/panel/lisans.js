@@ -163,9 +163,10 @@
         programId: p.programId, customer: $('#licCustomer').value, email: $('#licEmail').value, phone: $('#licPhone').value,
         starts: $('#licStarts').value, ends: $('#licEnds').value, maxDevices: Number($('#licDevices').value),
         limits, modules, note: $('#licNote').value, withDownload: $('#licWithDl').checked && !$('#licWithDl').disabled,
+        code: $('#licCode').value.trim(),
       } });
       showResult(r, $('#licEmail').value, $('#licPhone').value);
-      $('#licCustomer').value = ''; $('#licEmail').value = ''; $('#licPhone').value = ''; $('#licNote').value = '';
+      $('#licCustomer').value = ''; $('#licEmail').value = ''; $('#licPhone').value = ''; $('#licNote').value = ''; $('#licCode').value = '';
       A().toast('Lisans oluşturuldu.');
     } catch (err) {
       A().msg($('#licMsg'), err.message);
@@ -213,9 +214,7 @@
       actions.append(h('button', { type: 'button', class: 'btn', onclick: () => editModal(d, reload) }, 'Koşulları düzenle'));
       actions.append(h('button', { type: 'button', class: 'btn', onclick: () => offlineModal(d, reload) }, 'Çevrimdışı etkinleştir'));
       if (d.status === 'suspended') {
-        const b = h('button', { type: 'button', class: 'btn btn-green' }, 'Yeniden aç');
-        A().armed(b, 'Emin misiniz? Aç', async () => { await post(`/licenses/${d.id}/resume`, 'Lisans yeniden açıldı.'); reload(); });
-        actions.append(b);
+        actions.append(h('button', { type: 'button', class: 'btn btn-green', onclick: () => resumeModal(d, reload) }, 'Yeniden aç'));
       } else {
         const b = h('button', { type: 'button', class: 'btn btn-warn' }, 'Askıya al');
         A().armed(b, 'Emin misiniz? Askıya al', async () => { await post(`/licenses/${d.id}/suspend`, 'Lisans askıya alındı.'); reload(); });
@@ -318,8 +317,9 @@
     modalForm('Süre uzat', [
       h('p', { class: 'muted', text: `Mevcut bitiş: ${d.ends}. Yeni süre programa bir sonraki doğrulamada (en geç 7 gün) ya da müşteri “Şimdi doğrula” dediğinde yansır.` }),
       h('label', { class: 'field' }, 'Yeni bitiş tarihi', h('input', { class: 'input', type: 'date', id: 'extEnds', value: d.nextYearIso })),
+      A().codeField('extCode'),
     ], 'Süreyi uzat', async () => {
-      await A().call(`/licenses/${d.id}/extend`, { method: 'POST', body: { ends: $('#extEnds').value } });
+      await A().call(`/licenses/${d.id}/extend`, { method: 'POST', body: { ends: $('#extEnds').value, code: $('#extCode').value.trim() } });
       A().closeModal(); A().toast('Süre uzatıldı.'); done();
     });
   }
@@ -335,15 +335,26 @@
         ...d.config.limits.map((l) => h('label', { class: 'field' }, l.label, h('input', { class: 'input', type: 'number', min: 0, value: String(d.limits[l.key]), dataset: { edLimit: l.key } })))),
       d.config.modules.length ? h('div', { class: 'checks' }, d.config.modules.map((m) => h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: d.modules.includes(m.key), dataset: { edModule: m.key } }), m.label))) : null,
       h('label', { class: 'field' }, 'İç not', h('textarea', { class: 'textarea', id: 'edNote', rows: 2, maxlength: 500, text: d.note || '' })),
+      A().codeField('edCode'),
     ], 'Kaydet', async (form) => {
       const limits = {};
       form.querySelectorAll('[data-ed-limit]').forEach((i) => { limits[i.dataset.edLimit] = Number(i.value); });
       const modules = [...form.querySelectorAll('[data-ed-module]')].filter((i) => i.checked).map((i) => i.dataset.edModule);
       await A().call(`/licenses/${d.id}/update`, { method: 'POST', body: {
         customer: $('#edCustomer').value, email: $('#edEmail').value, phone: $('#edPhone').value,
-        maxDevices: Number($('#edDevices').value), limits, modules, note: $('#edNote').value,
+        maxDevices: Number($('#edDevices').value), limits, modules, note: $('#edNote').value, code: $('#edCode').value.trim(),
       } });
       A().closeModal(); A().toast('Koşullar güncellendi.'); done();
+    });
+  }
+
+  function resumeModal(d, done) {
+    modalForm('Lisansı yeniden aç', [
+      h('p', { class: 'muted', text: `${d.customer} · ${d.program} lisansı yeniden etkin olur; program bir sonraki doğrulamada (en geç 7 gün) ya da müşteri “Şimdi doğrula” dediğinde açılır.` }),
+      A().codeField('resCode'),
+    ], 'Yeniden aç', async () => {
+      await A().call(`/licenses/${d.id}/resume`, { method: 'POST', body: { code: $('#resCode').value.trim() } });
+      A().closeModal(); A().toast('Lisans yeniden açıldı.'); done();
     });
   }
 
@@ -351,8 +362,9 @@
     modalForm('Çevrimdışı etkinleştirme', [
       h('p', { class: 'muted', text: 'İnternete çıkamayan sunucular için: müşterinin programındaki “Çevrimdışı istek kodu”nu aşağıya yapıştırın. Verilen lisans kodu bitiş tarihine kadar internetsiz çalışır; askıya alma, iptal ve cihaz kaldırma bu cihaza yansımaz (yalnızca internete bağlandığında yansır).' }),
       h('label', { class: 'field' }, 'Müşterinin istek kodu', h('textarea', { class: 'textarea mono', id: 'offReq', rows: 4, placeholder: 'ODR1.…' })),
+      A().codeField('offCode'),
     ], 'Lisans kodu üret', async () => {
-      const r = await A().call(`/licenses/${d.id}/offline`, { method: 'POST', body: { request: $('#offReq').value } });
+      const r = await A().call(`/licenses/${d.id}/offline`, { method: 'POST', body: { request: $('#offReq').value, code: $('#offCode').value.trim() } });
       const copy = h('button', { type: 'button', class: 'btn btn-sm' }, 'Kopyala');
       copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.token); A().toast('Lisans kodu kopyalandı.'); } catch { A().toast('Kopyalanamadı.', true); } });
       A().openModal('Lisans kodu hazır', h('div', { class: 'modal-body' },

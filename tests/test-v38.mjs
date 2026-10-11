@@ -69,8 +69,16 @@ async function adminLogin() {
   assert.equal(r2.status, 200, JSON.stringify(r2.data));
 }
 await adminLogin();
+// Lisans oluşturma/uzatma/düzenleme/açma ve çevrimdışı kod her seferinde doğrulama kodu ister:
+// testlerde kod verilmemişse güncel kod otomatik eklenir (kodsuz durum ayrıca test edilir)
+const CODE_PATHS = /^\/panel\/api\/licenses(\/\d+\/(update|extend|resume|offline))?$/;
 const admin = {
   async req(...a) {
+    const [method, p, opts = {}] = a;
+    if (method === 'POST' && CODE_PATHS.test(p) && !(opts.body && 'code' in opts.body) && !opts.noCode) {
+      tick(31);
+      a = [method, p, { ...opts, body: { ...(opts.body || {}), code: await S.hotp(SECRET, Math.floor(S.now() / 30)) } }];
+    }
     let r = await adminRaw.req(...a);
     if (r.status === 401 && r.data && r.data.restart) { await adminLogin(); r = await adminRaw.req(...a); }
     return r;

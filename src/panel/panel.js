@@ -695,15 +695,27 @@ async function watchRun(c) {
   return json(r);
 }
 
-// Müşterilerin bilgisayarına gidecek güncelleme: oturum yetmez, iki adımlı kod gerekir
-async function releasePublish(c, m) {
-  const guard = await sensitiveGuard(c);
-  if (guard) return guard;
-  const b = await c.req.clone().json().catch(() => ({}));
-  if (!(await checkTotp(c, await getAdmin(c.env), b.code))) return sensitiveFail(c, 'Doğrulama kodu hatalı');
-  await clearFails(c);
-  return publishRelease(c, m);
+// Değer üreten işlemler (lisans oluşturma/uzatma/düzenleme/açma, çevrimdışı kod, güncelleme yayını):
+// oturum yetmez, her seferinde doğrulama uygulamasındaki kod gerekir.
+// Kod işlem BAŞARILI olursa harcanır; form hatasında (ör. tarih) aynı kodla düzeltip tekrar denenebilir.
+function withCode(fn) {
+  return async (c, m) => {
+    const guard = await sensitiveGuard(c);
+    if (guard) return guard;
+    const b = await c.req.clone().json().catch(() => ({}));
+    const admin = await getAdmin(c.env);
+    const step = await verifyTotp(await totpSecret(c, admin.totp_enc), b.code, admin.totp_last_step, c.t);
+    if (step === null) return sensitiveFail(c, String(b.code || '').trim() ? 'Doğrulama kodu hatalı' : 'Bu işlem için doğrulama uygulamasındaki 6 haneli kodu girin');
+    await clearFails(c);
+    const res = await fn(c, m);
+    if (res.status < 300) {
+      const r = await run(c.env, 'UPDATE admin SET totp_last_step = ? WHERE id = 1 AND totp_last_step < ?', step, step);
+      if (changes(r) !== 1) await audit(c, 'Uyarı', 'Aynı doğrulama kodu iki işlemde kullanıldı');
+    }
+    return res;
+  };
 }
+const releasePublish = withCode(publishRelease);
 
 // ---------- Lisans yenileme takibi ----------
 async function renewals(c) {
@@ -781,15 +793,15 @@ const ROUTES = [
   ['GET', /^\/audit\.csv$/, auditCsv],
   ['GET', /^\/license-products$/, licenseProducts],
   ['GET', /^\/licenses$/, listLicenses],
-  ['POST', /^\/licenses$/, createLicense],
+  ['POST', /^\/licenses$/, withCode(createLicense)],
   ['GET', /^\/licenses\/(\d+)$/, getLicense],
-  ['POST', /^\/licenses\/(\d+)\/update$/, updateLicense],
-  ['POST', /^\/licenses\/(\d+)\/extend$/, extendLicense],
+  ['POST', /^\/licenses\/(\d+)\/update$/, withCode(updateLicense)],
+  ['POST', /^\/licenses\/(\d+)\/extend$/, withCode(extendLicense)],
   ['POST', /^\/licenses\/(\d+)\/suspend$/, suspendLicense],
-  ['POST', /^\/licenses\/(\d+)\/resume$/, resumeLicense],
+  ['POST', /^\/licenses\/(\d+)\/resume$/, withCode(resumeLicense)],
   ['POST', /^\/licenses\/(\d+)\/revoke$/, revokeLicense],
   ['POST', /^\/licenses\/(\d+)\/devices\/(\d+)\/remove$/, removeDevice],
-  ['POST', /^\/licenses\/(\d+)\/offline$/, offlineActivate],
+  ['POST', /^\/licenses\/(\d+)\/offline$/, withCode(offlineActivate)],
   ['POST', /^\/versions\/(\d+)\/release$/, releasePublish],
   ['DELETE', /^\/versions\/(\d+)\/release$/, unpublishRelease],
   ['GET', /^\/payroll$/, getPayroll],
