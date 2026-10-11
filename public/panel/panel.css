@@ -295,3 +295,7 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 .ptbl-4 th:nth-child(3){width:150px}
 .ptbl-4 th:nth-child(5){width:44px}
 .setting>div{min-width:0}.setting small.mono{overflow-wrap:anywhere;word-break:break-all}.setting .btn{flex-shrink:0}
+
+/* V3.9 Destek soruları */
+.sup-q { white-space: pre-wrap; margin: .4rem 0; overflow-wrap: anywhere; }
+.renew.muted { opacity: .7; }

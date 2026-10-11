@@ -10,7 +10,8 @@
     // /panel, /panel/* : yönetim paneli (ekranlar + /panel/api/*)
     // /indir/* : müşteri indirme bağlantıları · /lisans/api/* : programların lisans ve güncelleme API'si
     // /pdks/parametreler.json, /params-2026.js : panelden yayınlanan bordro parametreleri
-    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*", "/pdks/parametreler.json", "/params-2026.js"]
+    // /pdks-api/api.php : NİS PDKS güncelleme ve destek kanalı (programın eski .lic lisansıyla da çalışır)
+    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*", "/pdks/parametreler.json", "/params-2026.js", "/pdks-api/*"]
   },
   // Panel veritabanı: kimlik yazılmadığı için Cloudflare ilk yayında otomatik oluşturur ve bağlar.
   // Tablolar ve gizli anahtarlar panel ilk açıldığında otomatik kurulur.
@@ -28,6 +29,12 @@
     // Web üzerinden ilk kurulum kodunun SHA-256 özeti (kodun kendisi değil). Yönetici hesabı oluşunca kurulum kapanır.
     "SETUP_CODE_HASH": "b7af38bc1703ea279170e7e6aeb4b6e7164acdd45ca5e2da1d21b11d027edbdb"
   },
+  // Destek soruları e-postası (Cloudflare Email Service). Yalnız info@ozkandemir.net'e, yalnız destek@ozkandemir.net'ten gider.
+  // Kurulum: Email Service › Email Sending › ozkandemir.net "Onboard"; ücretsiz planda info@ozkandemir.net
+  // Email Routing › Destination addresses altında doğrulanmış olmalı. Kurulmamışsa sorular yine panelde görünür.
+  "send_email": [
+    { "name": "SUPPORT_MAIL", "destination_address": "info@ozkandemir.net", "allowed_sender_addresses": ["destek@ozkandemir.net"] }
+  ],
   // Her gün 07:17 (TSİ) resmi kaynak takibi
   "triggers": { "crons": ["17 4 * * *"] },
   "observability": { "enabled": true }

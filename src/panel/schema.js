@@ -1,7 +1,7 @@
 // ozkandemir.net — Veritabanı şeması (migrations/*.sql ile aynı; tests/test-config.mjs eşitliği denetler)
 // Panel ilk açıldığında bu ifadeler tek işlemde (batch) çalıştırılır; tümü "IF NOT EXISTS" olduğundan tekrar çalışması güvenlidir.
 // Bu dosya elle düzenlenmez: node scripts/build-schema.mjs
-export const SCHEMA_VERSION = '4';
+export const SCHEMA_VERSION = '5';
 export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS admin (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  pass_changed_at INTEGER NOT NULL,\n  totp_enc TEXT NOT NULL,\n  totp_last_step INTEGER NOT NULL DEFAULT 0,\n  totp_pending_enc TEXT,\n  updated_at INTEGER NOT NULL\n)",
   "CREATE TABLE IF NOT EXISTS backup_codes (\n  code_hash TEXT PRIMARY KEY,\n  used_at INTEGER\n)",
@@ -35,4 +35,7 @@ export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS settings (\n  name TEXT PRIMARY KEY,\n  value TEXT NOT NULL,\n  updated_at INTEGER NOT NULL\n)",
   "CREATE INDEX IF NOT EXISTS idx_releases_program ON releases(program_id)",
   "CREATE INDEX IF NOT EXISTS idx_source_alerts_found ON source_alerts(found_at)",
+  "CREATE TABLE IF NOT EXISTS support_questions (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  program TEXT NOT NULL,                 -- NİS PDKS\n  customer TEXT NOT NULL,                -- lisanstaki müşteri adı\n  license_ref TEXT,                      -- eski lisans kimliği ya da panel lisans no\n  license_state TEXT,                    -- active | expired | suspended | deactivated\n  machine TEXT,\n  host TEXT,\n  app_version TEXT,\n  user_type TEXT,                        -- personel | yonetici\n  lang TEXT,\n  page TEXT,\n  search TEXT,\n  question TEXT NOT NULL,\n  contact TEXT,\n  asked_at TEXT,                         -- programdaki soru zamanı (yerel saat)\n  dedupe TEXT NOT NULL UNIQUE,           -- aynı sorunun yeniden gönderimi tek kayıt olur\n  received_at INTEGER NOT NULL,\n  mail_state TEXT NOT NULL DEFAULT 'pending',  -- pending | sent | failed\n  mail_error TEXT,\n  mail_tries INTEGER NOT NULL DEFAULT 0,\n  answered_at INTEGER\n)",
+  "CREATE INDEX IF NOT EXISTS idx_support_open ON support_questions(answered_at, received_at)",
+  "CREATE INDEX IF NOT EXISTS idx_support_mail ON support_questions(mail_state)",
 ];

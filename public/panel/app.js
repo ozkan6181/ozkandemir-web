@@ -135,7 +135,7 @@
       if (view === 'guvenlik') loadSecurity();
       else loadOverview();
     }
-    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler')) {
+    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek')) {
       const el = document.getElementById(hash);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
@@ -158,7 +158,52 @@
     }
     loadLinks();
     loadRenewals();
+    loadSupport();
   }
+
+  // ---------- Destek soruları (NİS PDKS › Yardım › Cevabımı bulamadım) ----------
+  const SUP_STATE = { all: false };
+  async function loadSupport() {
+    let r;
+    try { r = await call('/support' + (SUP_STATE.all ? '?hepsi=1' : '')); } catch { return; }
+    const badge = $('#supportBadge');
+    badge.textContent = String(r.open);
+    badge.hidden = !r.open;
+    const failed = r.list.filter((q) => q.mail_state !== 'sent' && !q.answered_at).length;
+    msg($('#supportMail'), !r.mailReady
+      ? `E-posta gönderimi henüz kurulmadı; sorular yalnız burada görünür (hedef: ${r.to}).`
+      : failed ? `${failed} soru ${r.to} adresine henüz e-posta olarak gidemedi; burada görünür ve günlük yeniden denenir.` : '', 'warn');
+    $('#supportSub').textContent = r.open
+      ? `${r.open} yanıt bekleyen soru · e-posta: ${r.to}`
+      : `Yanıt bekleyen soru yok · yeni sorular ${r.to} adresine de gelir.`;
+    $('#supportAll').textContent = SUP_STATE.all ? 'Yalnız bekleyenler' : 'Yanıtlananları da göster';
+    if (!r.list.length) {
+      $('#supportList').replaceChildren(h('p', { class: 'muted small', text: SUP_STATE.all ? 'Henüz soru gelmedi.' : 'Bekleyen soru yok.' }));
+      return;
+    }
+    $('#supportList').replaceChildren(...r.list.map((q) => {
+      const who = (q.user_type === 'yonetici' ? 'Yönetici' : 'Personel') + (q.lang && q.lang !== 'tr' ? ' · ' + q.lang.toUpperCase() : '');
+      const wa = waNumber(q.contact);
+      const reply = `Merhaba,\n\nNİS PDKS'de sorduğunuz soru:\n"${q.question.slice(0, 300)}"\n\n\n\nÖzkan Demir\nNİS Destek · 0551 600 77 87`;
+      return h('div', { class: 'renew' + (q.answered_at ? ' muted' : '') },
+        h('div', {},
+          h('b', { text: `#${q.id} · ${q.customer}` }),
+          h('small', { text: `${q.received} · ${who} · ekran ${q.page || '-'}${q.app_version ? ' · V' + q.app_version : ''}${q.license_state && q.license_state !== 'active' ? ' · lisans: ' + q.license_state : ''}` }),
+          h('p', { class: 'small sup-q', text: q.question }),
+          h('small', { text: `İletişim: ${q.contact || '(yazılmadı)'}${q.search ? ' · aranan: ' + q.search : ''}` })),
+        h('div', { class: 'btn-row' },
+          h('span', { class: 'pill pill-' + (q.answered_at ? 'info' : q.mail_state === 'sent' ? 'warn' : 'bad'),
+            text: q.answered_at ? `Yanıtlandı ${q.answered}` : q.mail_state === 'sent' ? 'E-posta geldi' : 'E-posta gitmedi', title: q.mail_error || '' }),
+          q.contactIsEmail ? h('a', { class: 'btn btn-sm', href: `mailto:${encodeURIComponent(q.contact)}?subject=${encodeURIComponent('NİS PDKS destek #' + q.id)}&body=${encodeURIComponent(reply)}` }, 'E-posta ile yanıtla') : null,
+          wa ? h('a', { class: 'btn btn-sm btn-green', target: '_blank', rel: 'noopener noreferrer', href: `https://wa.me/${wa}?text=${encodeURIComponent(reply)}` }, 'WhatsApp') : null,
+          h('button', { type: 'button', class: 'btn btn-sm btn-navy', onclick: async (ev) => {
+            ev.currentTarget.disabled = true;
+            try { await call(`/support/${q.id}/answered`, { method: 'POST', body: { reopen: Boolean(q.answered_at) } }); toast(q.answered_at ? 'Soru yeniden açıldı.' : 'Yanıtlandı olarak işaretlendi.'); } catch (e) { toast(e.message, true); }
+            loadSupport();
+          } }, q.answered_at ? 'Yeniden aç' : 'Yanıtlandı')));
+    }));
+  }
+  $('#supportAll').addEventListener('click', () => { SUP_STATE.all = !SUP_STATE.all; loadSupport(); });
 
   // ---------- Yenileme takibi ----------
   function waNumber(phone) {

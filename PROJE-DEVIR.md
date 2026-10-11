@@ -742,3 +742,6 @@ Lisans oluşturma, süre uzatma, koşul düzenleme, askıdaki lisansı yeniden a
 
 ### V3.8.2 — Sıralı güncelleme (11.10.2026)
 Tüm sürümler ayrı satırda saklanır; eski sürümler sonradan yüklenebilir ve yayınlanabilir. `update-check` artık en yeniyi değil, kurulu sürümden SONRAKİ ilk yayındaki sürümü verir (`remaining` = sırada bekleyen sayı); program kurulumdan sonra tekrar sorar, ara sürüm atlanmaz. "Son sürüm" her yerde sürüm numarasına göre belirlenir (yükleme tarihine göre değil). Panelde "Yayında olmayan sürümlerin hepsini yayınla" (2FA). Python istemcisi: `UpdateInfo.remaining`, `UpdateInfo.latest`.
+
+## 20. V3.9.0 — NİS PDKS güncelleme ve destek kanalı (11.10.2026)
+`/pdks-api/api.php` (PDKS sohbetinden gelen yama; V3.8 kanal yamasının yerine geçer). İşlemler: `check`, `download` (yalnız panelde YAYINLANMIŞ `PDKS_Vx.y.z_guncelleme.zip` paketleri, zincir zip içindeki manifest'ten), `support_question` (D1 `support_questions` + `SUPPORT_MAIL` ile info@ozkandemir.net'e e-posta; panelde "Destek soruları" kartı). Eski `.lic` ve panel (ODL1) lisansları kabul edilir. E-posta gönderimi için Cloudflare Email Service onboarding + info@ozkandemir.net hedef adres doğrulaması gerekir; kök MX/SPF kayıtlarına dokunulmaz.

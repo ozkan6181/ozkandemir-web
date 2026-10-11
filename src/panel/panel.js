@@ -20,6 +20,8 @@ import { handleUpdateApi, publishRelease, publishAllReleases, unpublishRelease, 
 import { getPayroll, previewPayroll, publishPayroll, restorePayroll, dismissAlert, isPayrollPublicPath, servePayrollPublic } from './parametre.js';
 import { runWatch } from './watch.js';
 import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfsetup.js';
+import { handlePdksApi, UPDATE_PATH } from './pdks-updates.js';
+import { listSupport, answerSupport, retrySupportMail } from './destek.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -816,6 +818,8 @@ const ROUTES = [
   ['POST', /^\/watch\/run$/, watchRun],
   ['GET', /^\/renewals$/, renewals],
   ['POST', /^\/security\/cloudflare$/, cloudflareSetupRoute],
+  ['GET', /^\/support$/, listSupport],
+  ['POST', /^\/support\/(\d+)\/answered$/, answerSupport],
 ];
 
 async function api(c) {
@@ -896,13 +900,14 @@ async function handleDownload(req, env, url, cl) {
 
 // ---------- Giriş noktası ----------
 export function isPanelPath(pathname) {
-  return pathname === '/panel' || pathname.startsWith('/panel/') || pathname.startsWith('/indir/') || pathname.startsWith('/lisans/api/') || isPayrollPublicPath(pathname);
+  return pathname === '/panel' || pathname.startsWith('/panel/') || pathname.startsWith('/indir/') || pathname.startsWith('/lisans/api/') || isPayrollPublicPath(pathname) || pathname === UPDATE_PATH;
 }
 
 // Cloudflare zamanlanmış görevi (günde bir): resmi kaynak takibi
 export async function scheduledTasks(env) {
   if (!env.DB) return;
   env = await prepareEnv(env);
+  try { await retrySupportMail(env, 50); } catch (e) { console.error('destek e-postası', e); }
   const r = await runWatch(env);
   if (r.found) await audit({ env, cl: { ip: null, location: 'Zamanlanmış görev', ua: null } }, 'Bordro', `Resmi kaynaklarda ${r.found} yeni başlık bulundu; Bordro Parametreleri ekranında inceleyin`);
 }
@@ -925,6 +930,8 @@ export async function handlePanel(request, env) {
       return secure(await handleUpdateApi(request, env, url, cl), CSP_PANEL);
     }
     if (url.pathname.startsWith('/lisans/api/')) return secure(await handleLicenseApi(request, env, url, cl), CSP_PANEL);
+    // NİS PDKS güncelleme kanalı (programın Ayarlar › Güncellemeler ekranı; Access dışında, lisansla doğrulanır)
+    if (url.pathname === UPDATE_PATH) return secure(await handlePdksApi(request, env), CSP_PANEL);
 
     // 1. kat: Cloudflare Access (yapılandırıldıysa zorunlu)
     // Kurulumdan sonra ilk geçerli Access girişi kapıyı kalıcı olarak etkinleştirir (yanlış kurulumda kilitlenmeyi önler)
