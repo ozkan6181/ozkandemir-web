@@ -20,7 +20,6 @@ import { handleUpdateApi, publishRelease, publishAllReleases, unpublishRelease, 
 import { getPayroll, previewPayroll, publishPayroll, restorePayroll, dismissAlert, isPayrollPublicPath, servePayrollPublic } from './parametre.js';
 import { runWatch } from './watch.js';
 import { accessConfig, markAccessActive, cloudflareSetup, CfError } from './cfsetup.js';
-import { handleUpdateApi as handlePdksUpdateApi, UPDATE_PATH as PDKS_UPDATE_PATH } from './pdks-updates.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -897,7 +896,7 @@ async function handleDownload(req, env, url, cl) {
 
 // ---------- Giriş noktası ----------
 export function isPanelPath(pathname) {
-  return pathname === '/panel' || pathname.startsWith('/panel/') || pathname.startsWith('/indir/') || pathname.startsWith('/lisans/api/') || isPayrollPublicPath(pathname) || pathname === PDKS_UPDATE_PATH;
+  return pathname === '/panel' || pathname.startsWith('/panel/') || pathname.startsWith('/indir/') || pathname.startsWith('/lisans/api/') || isPayrollPublicPath(pathname);
 }
 
 // Cloudflare zamanlanmış görevi (günde bir): resmi kaynak takibi
@@ -922,8 +921,6 @@ export async function handlePanel(request, env) {
     if (!staticPage) env = await prepareEnv(env);
     if (url.pathname.startsWith('/indir/')) return secure(await handleDownload(request, env, url, cl), CSP_DL);
     // Müşteri programlarının lisans API'si (Access dışında, kendi deneme sınırıyla)
-    // NİS PDKS güncelleme kanalı (programın Ayarlar › Güncellemeler ekranı; Access dışında, lisansla doğrulanır)
-    if (url.pathname === PDKS_UPDATE_PATH) return secure(await handlePdksUpdateApi(request, env), CSP_PANEL);
     if (url.pathname.startsWith('/lisans/api/update-')) {
       return secure(await handleUpdateApi(request, env, url, cl), CSP_PANEL);
     }

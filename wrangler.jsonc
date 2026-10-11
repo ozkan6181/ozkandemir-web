@@ -10,8 +10,7 @@
     // /panel, /panel/* : yönetim paneli (ekranlar + /panel/api/*)
     // /indir/* : müşteri indirme bağlantıları · /lisans/api/* : programların lisans ve güncelleme API'si
     // /pdks/parametreler.json, /params-2026.js : panelden yayınlanan bordro parametreleri
-    // /pdks-api/api.php : NİS PDKS güncelleme kanalı (programın Ayarlar › Güncellemeler ekranı)
-    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*", "/pdks/parametreler.json", "/params-2026.js", "/pdks-api/*"]
+    "run_worker_first": ["/api/*", "/panel", "/panel/*", "/indir/*", "/lisans/*", "/pdks/parametreler.json", "/params-2026.js"]
   },
   // Panel veritabanı: kimlik yazılmadığı için Cloudflare ilk yayında otomatik oluşturur ve bağlar.
   // Tablolar ve gizli anahtarlar panel ilk açıldığında otomatik kurulur.
