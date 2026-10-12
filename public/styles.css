@@ -66,3 +66,5 @@
 .yz-demo{margin:18px 0;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding:18px 20px;border-radius:12px;background:linear-gradient(135deg,#073a6c,#0b4f86);color:#fff}.yz-demo b{font-size:17px;display:block}.yz-demo small{opacity:.85}.yz-demo a{background:#c99a2e;color:#fff;text-decoration:none;font-weight:800;padding:11px 16px;border-radius:8px}
 @media(max-width:650px){.demo-steps{grid-template-columns:1fr}}
 .demo-intro .demo-steps{grid-template-columns:1fr;align-self:center;margin-top:0}.demo-intro .demo-steps span{padding:10px 12px}
+.brand-logo{width:50px;height:auto;flex:none;display:block;border-radius:6px}
+@media(max-width:650px){.brand-logo{width:44px}}
