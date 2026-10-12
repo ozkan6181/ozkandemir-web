@@ -5,7 +5,7 @@ import { now, randomBytes, sha256hex, b64url, unb64url, encryptText, decryptText
 import { json, fail, first, all, run, changes, readJson, HttpError, fmtTR, audit, chargeAttempt, compareVersions } from './common.js';
 
 // Programın en yüksek numaralı hazır sürümü (eski sürümler sonradan yüklenmiş olabilir)
-async function highestVersion(env, programId) {
+export async function highestVersion(env, programId) {
   const rows = await all(env, "SELECT id, version, created_at FROM versions WHERE program_id = ? AND status = 'ready'", programId);
   return rows.sort((a, b) => compareVersions(b.version, a.version) || b.created_at - a.created_at)[0] || null;
 }

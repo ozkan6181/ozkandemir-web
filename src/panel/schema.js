@@ -1,7 +1,7 @@
 // ozkandemir.net — Veritabanı şeması (migrations/*.sql ile aynı; tests/test-config.mjs eşitliği denetler)
 // Panel ilk açıldığında bu ifadeler tek işlemde (batch) çalıştırılır; tümü "IF NOT EXISTS" olduğundan tekrar çalışması güvenlidir.
 // Bu dosya elle düzenlenmez: node scripts/build-schema.mjs
-export const SCHEMA_VERSION = '8';
+export const SCHEMA_VERSION = '9';
 export const SCHEMA = [
   "CREATE TABLE IF NOT EXISTS admin (\n  id INTEGER PRIMARY KEY CHECK (id = 1),\n  email TEXT NOT NULL,\n  pass_hash TEXT NOT NULL,\n  pass_changed_at INTEGER NOT NULL,\n  totp_enc TEXT NOT NULL,\n  totp_last_step INTEGER NOT NULL DEFAULT 0,\n  totp_pending_enc TEXT,\n  updated_at INTEGER NOT NULL\n)",
   "CREATE TABLE IF NOT EXISTS backup_codes (\n  code_hash TEXT PRIMARY KEY,\n  used_at INTEGER\n)",
@@ -46,4 +46,7 @@ export const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS idx_trials_ip ON trials(ip, last_sent_at)",
   "CREATE TABLE IF NOT EXISTS license_bundles (\n  license_id INTEGER PRIMARY KEY REFERENCES licenses(id),\n  bundle_id INTEGER NOT NULL,\n  kind TEXT NOT NULL DEFAULT 'pdks-izin',\n  created_at INTEGER NOT NULL\n)",
   "CREATE INDEX IF NOT EXISTS idx_license_bundles_bundle ON license_bundles(bundle_id)",
+  "CREATE TABLE IF NOT EXISTS demo_requests (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  program_slug TEXT NOT NULL,\n  company TEXT NOT NULL,\n  contact_name TEXT NOT NULL,\n  email TEXT NOT NULL,\n  phone TEXT NOT NULL,\n  note TEXT,\n  ip TEXT,\n  mail_state TEXT NOT NULL DEFAULT 'pending',   -- bize bildirim: pending | sent\n  state TEXT NOT NULL DEFAULT 'new',            -- new | sent | closed\n  license_id INTEGER,\n  sent_at INTEGER,\n  closed_at INTEGER,\n  created_at INTEGER NOT NULL\n)",
+  "CREATE INDEX IF NOT EXISTS idx_demo_requests_ip ON demo_requests(ip, created_at)",
+  "CREATE INDEX IF NOT EXISTS idx_demo_requests_state ON demo_requests(state, created_at)",
 ];

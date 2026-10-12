@@ -24,6 +24,7 @@ import { handlePdksApi, UPDATE_PATH } from './pdks-updates.js';
 import { listSupport, answerSupport, retrySupportMail, testSupportMail } from './destek.js';
 import { listTunnels, closeTunnel, saveCfConfig, deleteCfConfig, closeTunnelsOfLicense } from './tunel.js';
 import { handleTrial } from './deneme.js';
+import { DEMO, receiveDemoRequest, listDemo, sendDemo, closeDemo } from './demo.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -823,6 +824,9 @@ const ROUTES = [
   ['GET', /^\/support$/, listSupport],
   ['POST', /^\/support\/(\d+)\/answered$/, answerSupport],
   ['POST', /^\/support\/test-mail$/, testSupportMail],
+  ['GET', /^\/demo$/, listDemo],
+  ['POST', /^\/demo\/(\d+)\/send$/, withCode(sendDemo)],
+  ['POST', /^\/demo\/(\d+)\/close$/, closeDemo],
   ['GET', /^\/tunnels$/, listTunnels],
   ['POST', /^\/tunnels\/(\d+)\/close$/, closeTunnel],
   ['POST', /^\/tunnel-config$/, withCode(saveCfConfig)],
@@ -949,6 +953,8 @@ export async function handlePanel(request, env) {
     // Müşteri programlarının lisans API'si (Access dışında, kendi deneme sınırıyla)
     // V3.11: 7 günlük deneme (programın ilk kurulum ekranı); anahtar yalnız e-postayla gider
     if (url.pathname === '/lisans/api/trial' && request.method === 'POST') return secure(await handleTrial(request, env, cl, now()), CSP_PANEL);
+    // V3.13: sitedeki "7 gün ücretsiz demo iste" formu (talep kaydedilir; demo yönetici onayıyla gider)
+    if (url.pathname === DEMO.PATH) return secure(await receiveDemoRequest(request, env, cl, now()), CSP_PANEL);
     if (url.pathname.startsWith('/lisans/api/update-')) {
       return secure(await handleUpdateApi(request, env, url, cl), CSP_PANEL);
     }

@@ -19,6 +19,7 @@
       <a href="#lisanslar" data-nav="lisanslar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><path d="M10.8 12.2L20 3M16 7l3 3M18 5l2 2"></path></svg>Lisanslar</a>
       <a href="#parametreler" data-nav="parametreler"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18H5z"></path><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M8 18h8"></path></svg>Bordro parametreleri<span class="nav-badge" id="paramBadge" hidden></span></a>
       <a href="#destek" data-nav="destek"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"></path><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4M12 16h0"></path></svg>Destek soruları<span class="nav-badge" id="supportBadge" hidden></span></a>
+      <a href="#demo" data-nav="demo"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12v9H4v-9"></path><path d="M2 7h20v5H2z"></path><path d="M12 22V7"></path><path d="M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"></path></svg>Demo talepleri<span class="nav-badge" id="demoBadge" hidden></span></a>
       <a href="#yukle" data-nav="yukle"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>Yeni yükleme</a>
       <a href="#linkler" data-nav="linkler"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path></svg>İndirme bağlantıları</a>
       <a href="#guvenlik" data-nav="guvenlik"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"></path></svg>Güvenlik ve kayıtlar</a>
@@ -61,6 +62,14 @@
         </div>
         <div id="supportMail" class="alert alert-warn" role="status" hidden></div>
         <div id="supportList"></div>
+      </section>
+
+      <section class="card" id="demo">
+        <div class="card-head">
+          <div><h2>Demo talepleri</h2><p class="muted small" id="demoSub">Sitedeki "7 Gün Ücretsiz Demo İste" formundan gelen talepler.</p></div>
+          <div class="btn-row"><a class="btn btn-sm" href="/demo.html" target="_blank" rel="noopener">Formu aç</a><button type="button" class="btn btn-sm" id="demoAll">Tümünü göster</button></div>
+        </div>
+        <div id="demoList"></div>
       </section>
 
       <section class="card" id="adresler">

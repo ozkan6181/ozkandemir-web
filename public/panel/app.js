@@ -135,7 +135,7 @@
       if (view === 'guvenlik') loadSecurity();
       else loadOverview();
     }
-    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek' || hash === 'adresler')) {
+    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek' || hash === 'adresler' || hash === 'demo')) {
       const el = document.getElementById(hash);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
@@ -159,6 +159,7 @@
     loadLinks();
     loadRenewals();
     loadSupport();
+    loadDemo();
     loadTunnels();
   }
 
@@ -249,6 +250,73 @@
     } catch (e) { toast(e.message, true); }
     btn.disabled = false;
   });
+
+  // ---------- Demo talepleri (sitedeki "7 Gün Ücretsiz Demo İste" formu) ----------
+  const DEMO_STATE = { all: false };
+  async function loadDemo() {
+    let r;
+    try { r = await call('/demo' + (DEMO_STATE.all ? '?hepsi=1' : '')); } catch { return; }
+    const badge = $('#demoBadge');
+    badge.textContent = String(r.open);
+    badge.hidden = !r.open;
+    $('#demoSub').textContent = r.open ? `${r.open} bekleyen demo talebi · "Demo gönder" 7 günlük deneme lisansı ve kurulum bağlantısını firmaya e-postayla gönderir.`
+      : 'Bekleyen demo talebi yok. Talepler info@ozkandemir.net adresine de bildirilir.';
+    $('#demoAll').textContent = DEMO_STATE.all ? 'Yalnız bekleyenler' : 'Tümünü göster';
+    if (!r.list.length) {
+      $('#demoList').replaceChildren(h('p', { class: 'muted small', text: DEMO_STATE.all ? 'Henüz demo talebi gelmedi.' : 'Bekleyen talep yok.' }));
+      return;
+    }
+    $('#demoList').replaceChildren(...r.list.map((d) => {
+      const pill = d.state === 'sent' ? h('span', { class: 'pill pill-ok', text: `Gönderildi ${d.sent}` })
+        : d.state === 'closed' ? h('span', { class: 'pill pill-info', text: 'Kapatıldı' }) : h('span', { class: 'pill pill-warn', text: 'Bekliyor' });
+      const acts = h('div', { class: 'btn-row' }, pill);
+      if (d.state === 'new') {
+        acts.append(h('button', { type: 'button', class: 'btn btn-sm btn-navy', onclick: () => demoSendModal(d, r.mailReady) }, 'Demo gönder'));
+        const cl = h('button', { type: 'button', class: 'btn btn-sm' }, 'Kapat');
+        armed(cl, 'Emin misiniz? Kapat', async () => {
+          try { await call(`/demo/${d.id}/close`, { method: 'POST', body: {} }); toast('Talep kapatıldı.'); } catch (e) { toast(e.message, true); }
+          loadDemo();
+        });
+        acts.append(cl);
+      } else if (d.state === 'closed') {
+        acts.append(h('button', { type: 'button', class: 'btn btn-sm', onclick: async () => {
+          try { await call(`/demo/${d.id}/close`, { method: 'POST', body: { reopen: true } }); toast('Talep yeniden açıldı.'); } catch (e) { toast(e.message, true); }
+          loadDemo();
+        } }, 'Yeniden aç'));
+      } else if (d.licenseId) {
+        acts.append(h('a', { class: 'btn btn-sm', href: '#lisans-' + d.licenseId }, 'Lisans'));
+      }
+      return h('div', { class: 'renew' + (d.state !== 'new' ? ' muted' : '') },
+        h('div', {},
+          h('b', { text: `#${d.id} · ${d.company} — ${d.program}` }),
+          h('small', { text: `${d.at} · ${d.name} · ${d.email} · ${d.phone}${d.key ? ' · ' + d.key + ' (bitiş ' + d.ends + ')' : ''}` }),
+          d.note ? h('p', { class: 'small sup-q', text: d.note }) : null),
+        acts);
+    }));
+  }
+  function demoSendModal(d, mailReady) {
+    formModal('Demo gönder', [
+      h('p', { text: `${d.company} için ${d.program} 7 günlük demo lisansı oluşturulacak (1 cihaz, varsayılan sınırlar, "Deneme" işaretli).` }),
+      h('p', { class: 'muted small', text: mailReady
+        ? `Lisans anahtarı ve yayındaki son sürümün kurulum bağlantısı ${d.email} adresine e-postayla gider. Satın alırsa lisansta "Süreyi uzat" yeterli.`
+        : 'E-posta gönderimi kurulu değil; mesaj bir sonraki ekranda gösterilir, WhatsApp ile iletebilirsiniz.' }),
+      codeField('demoCode'),
+    ], 'Demoyu oluştur ve gönder', async () => {
+      const r = await call(`/demo/${d.id}/send`, { method: 'POST', body: { code: $('#demoCode').value.trim() } });
+      const wa = waNumber(r.phone);
+      const copy = h('button', { type: 'button', class: 'btn btn-sm' }, 'Mesajı kopyala');
+      copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(r.text); toast('Mesaj kopyalandı.'); } catch { toast('Kopyalanamadı.', true); } });
+      openModal('Demo hazır', h('div', { class: 'modal-body' },
+        h('div', { class: 'alert ' + (r.mailed ? 'alert-ok' : 'alert-warn'), text: r.mailed ? `Demo bilgileri ${r.email} adresine e-postayla gönderildi.` : `E-posta gönderilemedi${r.mailError ? ' (' + r.mailError + ')' : ''}. Mesajı WhatsApp ile ya da kopyalayıp iletin.` }),
+        r.download ? null : h('div', { class: 'alert alert-warn', text: 'Bu program için yayında kurulum dosyası yok; mesajda indirme bağlantısı bulunmuyor.' }),
+        h('pre', { class: 'small demo-text', text: r.text }),
+        h('div', { class: 'btn-row' }, copy,
+          wa ? h('a', { class: 'btn btn-sm btn-green', target: '_blank', rel: 'noopener noreferrer', href: `https://wa.me/${wa}?text=${encodeURIComponent(r.text)}` }, 'WhatsApp ile gönder') : null,
+          h('a', { class: 'btn btn-sm', href: '#lisans-' + r.licenseId }, 'Lisansa git →'))));
+      loadDemo();
+    });
+  }
+  $('#demoAll').addEventListener('click', () => { DEMO_STATE.all = !DEMO_STATE.all; loadDemo(); });
 
   // ---------- Yenileme takibi ----------
   function waNumber(phone) {
