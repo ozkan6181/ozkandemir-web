@@ -144,6 +144,14 @@
   }
   window.addEventListener('hashchange', route);
 
+  // Dosya türü (dosya adından): kurulum dosyası / güncelleme paketi
+  function fileKindPill(f) {
+    f = String(f || '');
+    if (/_guncelleme\.zip$/i.test(f)) return h('span', { class: 'pill pill-info', title: f, text: 'Güncelleme paketi' });
+    if (/\.(exe|msi)$/i.test(f)) return h('span', { class: 'pill pill-ok', title: f, text: 'Kurulum dosyası' });
+    return f ? h('span', { class: 'sub', text: f }) : null;
+  }
+
   // ---------- Programlar ----------
   async function loadOverview() {
     try {
@@ -423,7 +431,7 @@
             } catch (e) { toast(e.message, true); }
           });
           return h('tr', {},
-            h('td', { class: 'num' }, v.version, v.active ? h('span', { class: 'sub', text: `${v.active} aktif link` }) : null),
+            h('td', { class: 'num' }, v.version, fileKindPill(v.filename), v.active ? h('span', { class: 'sub', text: `${v.active} aktif link` }) : null),
             h('td', { text: v.date }),
             h('td', { text: v.sizeText }),
             h('td', {}, v.notes ? h('span', { text: v.notes }) : h('span', { class: 'muted', text: 'Not yok' }), h('span', { class: 'sub mono', text: v.sha256 || '' })),
@@ -553,8 +561,10 @@
     msg($('#upMsg'), '');
     if (!chosen) return msg($('#upMsg'), 'Önce yüklenecek dosyayı seçin.');
     let programId = $('#upProgram').value;
-    const version = $('#upVersion').value.trim();
+    let version = $('#upVersion').value.trim();
     if (!programId) return msg($('#upMsg'), 'Program seçin.');
+    // Kurulum dosyası (Setup.exe / .msi): aynı sürümün güncelleme paketiyle çakışmasın diye etikete "-kurulum" eklenir
+    if (/\.(exe|msi)$/i.test(chosen.name) && version && !/kurulum|setup/i.test(version)) { version = (version + '-kurulum').slice(0, 32); $('#upVersion').value = version; }
     if (!/^[0-9A-Za-z][0-9A-Za-z._-]{0,31}$/.test(version)) return msg($('#upMsg'), 'Sürüm numarası geçersiz (ör. v2.4.0).');
 
     const ctrl = { aborted: false, versionId: null };

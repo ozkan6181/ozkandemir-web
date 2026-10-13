@@ -10,6 +10,21 @@ export async function highestVersion(env, programId) {
   return rows.sort((a, b) => compareVersions(b.version, a.version) || b.created_at - a.created_at)[0] || null;
 }
 
+// V3.13.1: Dosya türü dosya adından anlaşılır. "PDKS_Vx.y.z_guncelleme.zip" = güncelleme paketi (yalnız programın
+// kendi güncelleme kanalı kullanır); .exe / .msi = kurulum dosyası. Yeni müşteriye / demoya giden indirme bağlantısı
+// HER ZAMAN kurulum dosyasını verir: önce en yüksek numaralı kurulum dosyası, yoksa güncelleme paketi olmayan
+// en yüksek dosya; ikisi de yoksa bağlantı eklenmez (güncelleme paketi asla kurulum diye gönderilmez).
+export const isUpdatePackage = (f) => /_guncelleme\.zip$/i.test(String(f || ''));
+export const isSetupFile = (f) => /\.(exe|msi)$/i.test(String(f || '')) && !isUpdatePackage(f);
+export const fileKind = (f) => (isUpdatePackage(f) ? 'update' : isSetupFile(f) ? 'setup' : 'file');
+const newest = (rows) => rows.sort((a, b) => compareVersions(b.version, a.version) || b.created_at - a.created_at)[0] || null;
+export function pickInstaller(rows) {
+  return newest(rows.filter((v) => isSetupFile(v.filename))) || newest(rows.filter((v) => !isUpdatePackage(v.filename)));
+}
+export async function installerVersion(env, programId) {
+  return pickInstaller(await all(env, "SELECT id, version, filename, created_at FROM versions WHERE program_id = ? AND status = 'ready'", programId));
+}
+
 // ---------- Ürünler ----------
 // slug → programs.slug ; prefix → anahtar ön eki ; limits/modules → lisans koşulları
 export const PRODUCTS = {
@@ -294,9 +309,11 @@ export async function handleLicenseApi(request, env, url, cl) {
 // ---------- Yönetim paneli API'si ----------
 async function programsWithProducts(env) {
   const progs = await all(env, 'SELECT id, slug, name FROM programs ORDER BY id');
-  const latest = await all(env, "SELECT program_id, id, version, created_at FROM versions WHERE status = 'ready' ORDER BY created_at DESC, id DESC");
+  const latest = await all(env, "SELECT program_id, id, version, filename, created_at FROM versions WHERE status = 'ready'");
+  const byProg = {};
+  for (const v of latest) (byProg[v.program_id] = byProg[v.program_id] || []).push(v);
   const latestBy = {};
-  for (const v of latest) if (!latestBy[v.program_id] || compareVersions(v.version, latestBy[v.program_id].version) > 0) latestBy[v.program_id] = v;
+  for (const [pid, rows] of Object.entries(byProg)) { const v = pickInstaller(rows); if (v) latestBy[pid] = v; }
   return progs.filter((p) => PRODUCTS[p.slug]).map((p) => ({
     programId: p.id, slug: p.slug, name: p.name, prefix: PRODUCTS[p.slug].prefix,
     limits: PRODUCTS[p.slug].limits, modules: PRODUCTS[p.slug].modules,
@@ -460,7 +477,7 @@ export async function createLicense(c) {
 
   let download = null;
   if (b.withDownload) {
-    const v = await highestVersion(env, prog.id);
+    const v = await installerVersion(env, prog.id);
     if (v) {
       const token = b64url(randomBytes(32));
       await run(env, 'INSERT INTO links (token_hash, version_id, customer, expires_at, max_downloads, created_at) VALUES (?, ?, ?, ?, ?, ?)',

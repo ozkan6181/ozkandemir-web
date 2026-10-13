@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createD1, createR2, createAssets } from './helpers/cf-local.mjs';
 import { buildSigningKey, buildAdminSetup } from '../scripts/setup-lib.mjs';
 import * as S from '../src/panel/security.js';
-import { verifyToken, signingPublicKey } from '../src/panel/license.js';
+import { verifyToken, signingPublicKey, pickInstaller, fileKind } from '../src/panel/license.js';
 import worker from '../src/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -179,6 +179,19 @@ await test('Site: yazılım sayfalarında demo düğmesi, demo sayfası ve form 
   for (const v of ['nis-pdks', 'banka-xml-aktarim', 'satinalma-denetim', 'cari-mutabakat', 'yillik-izin', 'cari360']) assert.ok(d.includes(`value="${v}"`));
   assert.ok(d.includes('/demo.js'));
   assert.ok(fs.readFileSync(path.join(ROOT, 'public', 'yazilimlar.html'), 'utf8').includes('/demo.html'));
+});
+
+await test('İndirme bağlantısı her zaman kurulum dosyasını verir; güncelleme paketi asla', () => {
+  const v = (id, version, filename, created_at = id) => ({ id, version, filename, created_at });
+  assert.equal(fileKind('PDKS_V1.36.0_guncelleme.zip'), 'update');
+  assert.equal(fileKind('NIS_PDKS_Setup.exe'), 'setup');
+  assert.equal(fileKind('kurulum.zip'), 'file');
+  // yeni güncelleme paketi daha yüksek sürümde olsa da kurulum dosyası seçilir
+  assert.equal(pickInstaller([v(1, 'V1.34.0-kurulum', 'Setup.exe'), v(2, 'V1.36.0', 'PDKS_V1.36.0_guncelleme.zip', 99)]).id, 1);
+  assert.equal(pickInstaller([v(1, 'V1.34.0-kurulum', 'Setup.exe'), v(3, 'V1.36.0-kurulum', 'Setup.exe')]).id, 3);
+  // kurulum dosyası yoksa güncelleme paketi olmayan dosya; yalnız paket varsa bağlantı yok
+  assert.equal(pickInstaller([v(1, 'v2.0', 'BankaXml.zip'), v(2, 'V1.36.0', 'PDKS_V1.36.0_guncelleme.zip')]).id, 1);
+  assert.equal(pickInstaller([v(2, 'V1.36.0', 'PDKS_V1.36.0_guncelleme.zip')]), null);
 });
 
 console.log(`\n${passed} test geçti.`);

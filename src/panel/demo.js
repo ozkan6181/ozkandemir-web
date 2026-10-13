@@ -9,7 +9,7 @@
 //   gönderilebilir). Satın alınca lisansta "Süreyi uzat" yeterlidir (deneme işareti kalkar).
 import { json, fail, first, all, run, readJson, audit, fmtTR } from './common.js';
 import { randomBytes, sha256hex, b64url, encryptText } from './security.js';
-import { PRODUCTS, generateKey, keyHash, maskKey, event, highestVersion, dateTR } from './license.js';
+import { PRODUCTS, generateKey, keyHash, maskKey, event, installerVersion, dateTR } from './license.js';
 import { mailTransport, SUPPORT } from './destek.js';
 
 export const DEMO = { DAYS: 7, PER_IP_DAY: 5, PATH: '/lisans/api/demo-talep' };
@@ -147,7 +147,7 @@ export async function sendDemo(c, [, id]) {
   await event(env, licenseId, 'Oluşturuldu', `7 günlük demo · site talebi #${d.id} · ${d.email}`, c.cl);
 
   let download = null;
-  const v = await highestVersion(env, prog.id);
+  const v = await installerVersion(env, prog.id);
   if (v) {
     const token = b64url(randomBytes(32));
     await run(env, 'INSERT INTO links (token_hash, version_id, customer, expires_at, max_downloads, created_at) VALUES (?, ?, ?, ?, ?, ?)',
