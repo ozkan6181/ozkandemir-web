@@ -25,6 +25,7 @@ import { listSupport, answerSupport, retrySupportMail, testSupportMail } from '.
 import { listTunnels, closeTunnel, saveCfConfig, deleteCfConfig, closeTunnelsOfLicense } from './tunel.js';
 import { handleTrial } from './deneme.js';
 import { DEMO, receiveDemoRequest, listDemo, sendDemo, closeDemo } from './demo.js';
+import { listHealth, removeHealth, runHealthAlerts } from './saglik.js';
 
 // ---------- Ayarlar ----------
 export const CFG = {
@@ -827,6 +828,8 @@ const ROUTES = [
   ['GET', /^\/demo$/, listDemo],
   ['POST', /^\/demo\/(\d+)\/send$/, withCode(sendDemo)],
   ['POST', /^\/demo\/(\d+)\/close$/, closeDemo],
+  ['GET', /^\/health$/, listHealth],
+  ['POST', /^\/health\/remove$/, removeHealth],
   ['GET', /^\/tunnels$/, listTunnels],
   ['POST', /^\/tunnels\/(\d+)\/close$/, closeTunnel],
   ['POST', /^\/tunnel-config$/, withCode(saveCfConfig)],
@@ -929,9 +932,13 @@ export function isPanelPath(pathname) {
 }
 
 // Cloudflare zamanlanmış görevi (günde bir): resmi kaynak takibi
-export async function scheduledTasks(env) {
+export const DAILY_CRON = '17 4 * * *';
+export async function scheduledTasks(env, cron) {
   if (!env.DB) return;
   env = await prepareEnv(env);
+  // V3.14: NİS PDKS kurulum sağlığı (30 dakikada bir); günlük işler yalnız günlük tetikte
+  try { await runHealthAlerts(env, now()); } catch (e) { console.error('sağlık uyarıları', e); }
+  if (cron && cron !== DAILY_CRON) return;
   try { await retrySupportMail(env, 50); } catch (e) { console.error('destek e-postası', e); }
   const r = await runWatch(env);
   if (r.found) await audit({ env, cl: { ip: null, location: 'Zamanlanmış görev', ua: null } }, 'Bordro', `Resmi kaynaklarda ${r.found} yeni başlık bulundu; Bordro Parametreleri ekranında inceleyin`);

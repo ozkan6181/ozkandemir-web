@@ -33,6 +33,6 @@
   // Workers Paid plan ister; plan yükseltilirse buraya eklenebilir:
   // "send_email": [{ "name": "SUPPORT_MAIL", "destination_address": "info@ozkandemir.net", "allowed_sender_addresses": ["destek@ozkandemir.net"] }],
   // Her gün 07:17 (TSİ) resmi kaynak takibi
-  "triggers": { "crons": ["17 4 * * *"] },
+  "triggers": { "crons": ["17 4 * * *", "*/30 * * * *"] },
   "observability": { "enabled": true }
 }

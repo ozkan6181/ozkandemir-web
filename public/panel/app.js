@@ -135,7 +135,7 @@
       if (view === 'guvenlik') loadSecurity();
       else loadOverview();
     }
-    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek' || hash === 'adresler' || hash === 'demo')) {
+    if (view === 'programlar' && (hash === 'yukle' || hash === 'linkler' || hash === 'destek' || hash === 'adresler' || hash === 'demo' || hash === 'kurulumlar')) {
       const el = document.getElementById(hash);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
@@ -168,6 +168,7 @@
     loadRenewals();
     loadSupport();
     loadDemo();
+    loadHealth();
     loadTunnels();
   }
 
@@ -258,6 +259,48 @@
     } catch (e) { toast(e.message, true); }
     btn.disabled = false;
   });
+
+  // ---------- NİS PDKS kurulum sağlığı ----------
+  async function loadHealth() {
+    let r;
+    try { r = await call('/health'); } catch { return; }
+    const badge = $('#healthBadge');
+    badge.textContent = String(r.problems);
+    badge.hidden = !r.problems;
+    $('#healthSub').textContent = r.list.length
+      ? `${r.list.length} kurulum · ${r.problems ? r.problems + ' kurulumda sorun var' : 'sorun yok'} · sorunlar ${r.mailReady ? 'info@ozkandemir.net adresine günde en fazla bir kez e-postayla bildirilir' : 'e-posta kurulu olmadığı için yalnız burada görünür'}.`
+      : 'Henüz rapor gelmedi. NİS PDKS V1.46.0 ve sonrası saatte bir sağlık raporu gönderir.';
+    if (!r.list.length) { $('#healthList').replaceChildren(); return; }
+    const SIG = { green: ['ok', 'Canlı'], yellow: ['warn', 'Gecikti'], red: ['bad', 'Sinyal yok'] };
+    $('#healthList').replaceChildren(...r.list.map((x) => {
+      const [cls, label] = SIG[x.signal] || SIG.red;
+      const facts = [
+        `Son sinyal ${x.ago} önce (${x.last})`,
+        x.version ? `sürüm ${x.version}` : null,
+        x.backup ? `son yedek ${x.backup}` : null,
+        x.minDisk ? `en az boş disk ${x.minDisk.drive} ${x.minDisk.gb} GB` : null,
+        `yol kontrolü ${x.pathErrors ? x.pathErrors + ' hata' : 'temiz'}`,
+        x.licenseDays !== null ? `lisans ${x.licenseDays} gün` : null,
+        x.staff !== null ? `${x.staff} aktif personel` : null,
+      ].filter(Boolean).join(' · ');
+      const rm = h('button', { type: 'button', class: 'btn btn-sm' }, 'İzlemeden kaldır');
+      armed(rm, 'Emin misiniz? Kaldır', async () => {
+        try { await call('/health/remove', { method: 'POST', body: { owner: x.owner, machine: x.machine } }); toast('Kurulum izlemeden kaldırıldı.'); } catch (e) { toast(e.message, true); }
+        loadHealth();
+      });
+      return h('div', { class: 'renew' },
+        h('div', {},
+          h('b', { text: `${x.customer || x.owner} — ${x.host || x.machine}` }),
+          h('small', { text: facts }),
+          x.issues.length ? h('ul', { class: 'small health-issues' }, x.issues.map((i) => h('li', { text: i }))) : null,
+          x.warnings.length ? h('small', { class: 'muted', text: 'Uyarı: ' + x.warnings.join(' · ') }) : null),
+        h('div', { class: 'btn-row' },
+          h('span', { class: 'pill pill-' + (x.issues.length && cls === 'ok' ? 'warn' : cls), text: x.issues.length ? `${label} · ${x.issues.length} sorun` : label }),
+          x.licenseId ? h('a', { class: 'btn btn-sm', href: '#lisans-' + x.licenseId }, 'Lisans') : null,
+          rm));
+    }));
+  }
+  $('#healthRefresh').addEventListener('click', loadHealth);
 
   // ---------- Demo talepleri (sitedeki "7 Gün Ücretsiz Demo İste" formu) ----------
   const DEMO_STATE = { all: false };

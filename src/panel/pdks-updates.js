@@ -17,6 +17,7 @@
 // Yalnız panelde "Yayınla" denmiş sürümler zincire girer (releases tablosu; /lisans/api/update-check ile aynı kural).
 // support_question — Yardım › "Cevabımı bulamadım" soruları (destek.js): kaydedilir ve info@ozkandemir.net'e gider.
 //   Süresi dolmuş / askıdaki lisans da soru sorabilir (yenileme için destek gerekebilir); iptal edilmiş lisans soramaz.
+// saglik — kurulum sağlık raporu (saatte bir; saglik.js). Süresi dolmuş / askıdaki lisansın raporu da kaydedilir.
 // tunnel_create / tunnel_delete — uzaktan erişim adresi <ad>-pdks.ozkandemir.net (tunel.js). Adres almak için lisans
 //   etkin olmalı; kaldırma süresi dolmuş / askıdaki lisansla da yapılabilir.
 import { now } from './security.js';
@@ -24,6 +25,7 @@ import { json, first, all, run, readJson } from './common.js';
 import { verifyToken, signingPublicKey } from './license.js';
 import { receiveSupportQuestion } from './destek.js';
 import { handleTunnelAction } from './tunel.js';
+import { receiveHealth } from './saglik.js';
 
 export const UPDATE_PATH = '/pdks-api/api.php';
 // NİS PDKS satıcı genel anahtarı (Ed25519, ham 32 bayt, base64). Programdaki app/commercial/keys.py ile aynı.
@@ -231,6 +233,13 @@ export async function handlePdksApi(request, env) {
       return no(403, 'Lisans süresi dolmuş; adres alınamaz.');
     }
     return handleTunnelAction(env, a, body, { ...who, kind: who.kind || 'odl' }, t);
+  }
+  if (a === 'saglik') {
+    if (!env.DB) return no(503, 'Hizmet hazır değil.');
+    const who = await identify(env, body, t);
+    if (who.error && !['expired', 'suspended', 'deactivated'].includes(who.status)) return no(403, who.error);
+    if (who.error && !who.lid) return no(403, who.error);
+    return receiveHealth(env, body, { ...who, kind: who.kind || 'odl', device: who.device || String(body.machine || '') }, t);
   }
   if (!['check', 'download'].includes(a)) return no(404, 'Bu işlem henüz etkin değil.');
   if (!env.DB || !env.FILES) return no(503, 'Güncelleme hizmeti hazır değil.');

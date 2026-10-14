@@ -300,3 +300,4 @@ a.btn[aria-disabled="true"]{opacity:.5;pointer-events:none}
 .sup-q { white-space: pre-wrap; margin: .4rem 0; overflow-wrap: anywhere; }
 .renew.muted { opacity: .7; }
 .demo-text{white-space:pre-wrap;max-height:260px;overflow:auto;background:var(--bg,#f6f8fb);padding:10px;border-radius:8px;font-family:inherit}
+.health-issues{margin:6px 0 2px 18px;color:var(--red,#b42318)}
