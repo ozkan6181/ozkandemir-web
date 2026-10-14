@@ -17,6 +17,7 @@
 // Yalnız panelde "Yayınla" denmiş sürümler zincire girer (releases tablosu; /lisans/api/update-check ile aynı kural).
 // support_question — Yardım › "Cevabımı bulamadım" soruları (destek.js): kaydedilir ve info@ozkandemir.net'e gider.
 //   Süresi dolmuş / askıdaki lisans da soru sorabilir (yenileme için destek gerekebilir); iptal edilmiş lisans soramaz.
+// app_push — Android uygulamasına anlık bildirim (pdks-push.js; Firebase anahtarı yalnız gizli değişken FCM_SERVICE_ACCOUNT).
 // saglik — kurulum sağlık raporu (saatte bir; saglik.js). Süresi dolmuş / askıdaki lisansın raporu da kaydedilir.
 // tunnel_create / tunnel_delete — uzaktan erişim adresi <ad>-pdks.ozkandemir.net (tunel.js). Adres almak için lisans
 //   etkin olmalı; kaldırma süresi dolmuş / askıdaki lisansla da yapılabilir.
@@ -26,6 +27,7 @@ import { verifyToken, signingPublicKey } from './license.js';
 import { receiveSupportQuestion } from './destek.js';
 import { handleTunnelAction } from './tunel.js';
 import { receiveHealth } from './saglik.js';
+import { handleAppPush } from './pdks-push.js';
 
 export const UPDATE_PATH = '/pdks-api/api.php';
 // NİS PDKS satıcı genel anahtarı (Ed25519, ham 32 bayt, base64). Programdaki app/commercial/keys.py ile aynı.
@@ -233,6 +235,12 @@ export async function handlePdksApi(request, env) {
       return no(403, 'Lisans süresi dolmuş; adres alınamaz.');
     }
     return handleTunnelAction(env, a, body, { ...who, kind: who.kind || 'odl' }, t);
+  }
+  if (a === 'app_push') {
+    if (!env.DB) return no(503, 'Hizmet hazır değil.');
+    const who = await identify(env, body, t);
+    if (who.error) return no(403, who.error);
+    return handleAppPush(env, body, who);
   }
   if (a === 'saglik') {
     if (!env.DB) return no(503, 'Hizmet hazır değil.');

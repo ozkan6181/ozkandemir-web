@@ -22,10 +22,19 @@ const tick = (sec) => { clock += sec * 1000; };
 const nowS = () => Math.floor(clock / 1000);
 
 const mails = [];
+const fcm = { oauth: 0, sent: [] };
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (input, init = {}) => {
   const url = typeof input === 'string' ? input : input.url;
   if (url === 'https://api.resend.com/emails') { mails.push(JSON.parse(init.body)); return new Response('{"id":"m"}', { status: 200 }); }
+  if (url === 'https://oauth2.googleapis.com/token') { fcm.oauth++; return new Response(JSON.stringify({ access_token: 'ya29.test', expires_in: 3600 }), { status: 200 }); }
+  if (url.startsWith('https://fcm.googleapis.com/v1/projects/')) {
+    const m = JSON.parse(init.body).message;
+    fcm.sent.push({ url, auth: init.headers.authorization, m });
+    if (m.token.startsWith('gone')) return new Response(JSON.stringify({ error: { status: 'NOT_FOUND', details: [{ errorCode: 'UNREGISTERED' }] } }), { status: 404 });
+    if (m.token.startsWith('fail')) return new Response('{}', { status: 500 });
+    return new Response('{"name":"x"}', { status: 200 });
+  }
   return realFetch(input, init);
 };
 
@@ -188,6 +197,34 @@ await test('Panel: liste (oturum gerekir) ve izlemeden kaldırma', async () => {
   assert.equal((await panel('POST', '/panel/api/health/remove', { owner: x.owner, machine: x.machine })).status, 200);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM pdks_health').get().n, 0);
   assert.equal((await panel('POST', '/panel/api/health/remove', { owner: x.owner, machine: x.machine })).status, 404);
+});
+
+await test('Anlık bildirim (app_push): sahte lisans 403, anahtar yokken 503; geçerli lisansla Firebase’e iletilir', async () => {
+  const other = await crypto.subtle.generateKey({ name: 'Ed25519' }, true, ['sign', 'verify']);
+  const tok = 'dGVzdC10b2tlbi0x:APA91bH' + 'x'.repeat(40);
+  let r = await call({ a: 'app_push', machine: 'ABCD-1111', license: await legacyLicense({}, other.privateKey), messages: [{ token: tok, title: 'a', body: 'b' }] });
+  assert.equal(r.status, 403);
+  r = await call({ a: 'app_push', machine: 'ABCD-1111', license: await legacyLicense(), messages: [{ token: tok, title: 'a', body: 'b' }] });
+  assert.equal(r.status, 503);
+  assert.match(r.data.error, /henüz kurulmadı/);
+  const kp = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+  const der = Buffer.from(await crypto.subtle.exportKey('pkcs8', kp.privateKey)).toString('base64');
+  const pem = `-----BEGIN PRIVATE KEY-----\n${der.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
+  env.FCM_SERVICE_ACCOUNT = JSON.stringify({ type: 'service_account', project_id: 'nis-pdks-test', client_email: 'push@nis-pdks-test.iam.gserviceaccount.com', private_key: pem });
+  const msgs = [{ token: tok, title: 'Mesai onayı', body: 'Talebiniz onaylandı', url: '/talepler', tag: 'mesai' }, { token: 'kisa' }, { token: 'gone' + 'y'.repeat(30) }, { token: 'fail' + 'z'.repeat(30) }];
+  r = await call({ a: 'app_push', machine: 'ABCD-1111', license: await legacyLicense(), messages: msgs });
+  assert.equal(r.status, 200, JSON.stringify(r.data));
+  assert.deepEqual(r.data.results.map((x) => x.status), ['ok', 'invalid', 'invalid', 'error'], 'geçersiz token "invalid"');
+  const sent = fcm.sent.find((x) => x.m.token === tok);
+  assert.equal(sent.url, 'https://fcm.googleapis.com/v1/projects/nis-pdks-test/messages:send');
+  assert.equal(sent.auth, 'Bearer ya29.test');
+  assert.deepEqual(Object.keys(sent.m.data).sort(), ['body', 'tag', 'title', 'url'], 'yalnız başlık, metin, bağlantı, etiket');
+  assert.ok(!JSON.stringify(r.data).includes('PRIVATE KEY'), 'anahtar yanıtta yok');
+  // tek istekte en fazla 100 mesaj
+  r = await call({ a: 'app_push', machine: 'ABCD-1111', license: await legacyLicense(), messages: Array.from({ length: 130 }, () => ({ token: tok })) });
+  assert.equal(r.data.results.length, 100);
+  assert.equal(fcm.oauth, 1, 'Firebase oturumu önbellekten kullanılır');
+  delete env.FCM_SERVICE_ACCOUNT;
 });
 
 console.log(`\n${passed} test geçti.`);
